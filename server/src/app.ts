@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import type { Env } from './lib/env.js';
 import type { Logger } from './lib/logger.js';
 import { createRateLimiter } from './lib/rateLimit.js';
 import { AppError } from './lib/errors.js';
@@ -8,13 +9,14 @@ import { requestId } from './middleware/requestId.js';
 import { accessLog } from './middleware/accessLog.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { healthRoutes } from './routes/health.routes.js';
+import { catalogRoutes } from './routes/catalog.routes.js';
+import { CatalogController } from './controllers/catalog.controller.js';
+import { CatalogService } from './services/tmdb/catalog.service.js';
 
 export interface AppOptions {
-  env: {
-    NODE_ENV: string;
-    CLIENT_ORIGIN: string;
-  };
+  env: Env;
   logger: Logger;
+  fetchImpl?: typeof fetch;
   /** Extra routes mounted only under /api/v1/__test — never in production. */
   testRoutes?: boolean;
 }
@@ -42,8 +44,14 @@ export function createApp(options: AppOptions) {
   const generalLimiter = createRateLimiter({ windowMs: 60_000, max: 240 });
   app.use('/api', generalLimiter.middleware);
 
+  const catalog = new CatalogService(env, logger, options.fetchImpl);
+  if (!catalog.configured) {
+    logger.warn('TMDB_READ_ACCESS_TOKEN is not set — catalog endpoints will return 502 until server/.env provides one');
+  }
+
   const api = express.Router();
   api.use(healthRoutes());
+  api.use(catalogRoutes(new CatalogController(catalog)));
 
   if (options.testRoutes) {
     api.get('/__test/error', () => {

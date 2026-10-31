@@ -51,10 +51,14 @@ export function errorHandler(isDev: boolean) {
       req.log.warn(logPayload, appErr.message);
     }
 
+    // Operational errors keep their messages (they are safe and actionable);
+    // only unexpected internal failures are masked outside development.
+    const masked = appErr.code === 'INTERNAL_ERROR' && !isDev;
+
     const envelope: ErrorEnvelope = {
       error: {
         code: appErr.code,
-        message: appErr.status >= 500 && !isDev ? 'Something went wrong' : appErr.message,
+        message: masked ? 'Something went wrong' : appErr.message,
         requestId: req.requestId,
       },
     };

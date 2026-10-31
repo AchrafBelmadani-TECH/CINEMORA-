@@ -4,11 +4,15 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { HomePage } from '@/pages/HomePage';
+import { MoviesPage } from '@/pages/catalog/MoviesPage';
+import { SeriesPage } from '@/pages/catalog/SeriesPage';
+import { GenresPage } from '@/pages/catalog/GenresPage';
+import { GenrePage } from '@/pages/catalog/GenrePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 /**
  * Application shell. Routes appear as their phase lands (ROADMAP.md) —
- * Phase 1 ships the branded shell plus the 404 catch-all.
+ * Phase 2 adds the live catalog pages. Detail pages arrive in Phase 3.
  */
 export default function App() {
   const location = useLocation();
@@ -30,6 +34,38 @@ export default function App() {
               element={
                 <PageTransition>
                   <HomePage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/movies"
+              element={
+                <PageTransition>
+                  <MoviesPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/series"
+              element={
+                <PageTransition>
+                  <SeriesPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/genres"
+              element={
+                <PageTransition>
+                  <GenresPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/genre/:genreId"
+              element={
+                <PageTransition>
+                  <GenrePage />
                 </PageTransition>
               }
             />

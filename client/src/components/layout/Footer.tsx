@@ -24,6 +24,20 @@ export function Footer() {
         <div className="mt-8 border-t border-white/5 pt-6 text-center text-xs text-muted">
           © 2026 CINEMORA — premium cinema at home.
         </div>
+
+        {/* Required TMDB attribution (docs/ARCHITECTURE.md §12) */}
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-muted/70">
+          This product uses the TMDB API but is not endorsed or certified by{' '}
+          <a
+            href="https://www.themoviedb.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-gold/40 underline-offset-2 transition-colors hover:text-gold"
+          >
+            TMDB
+          </a>
+          .
+        </p>
       </div>
     </footer>
   );

@@ -6,71 +6,64 @@
 
 | | |
 |---|---|
-| **Phase** | **1 of 8 — Foundation, architecture & premium UI shell** |
-| **State** | ✅ **COMPLETE** — all acceptance criteria verified (2026-10-31) |
-| **App runnable?** | Yes — `npm install && npm run dev` (server :3000 + client :5173) |
-| **Next** | Phase 2 — Homepage, navigation, catalog & TMDB integration (**awaiting user approval**) |
+| **Phase** | **2 of 8 — Homepage, navigation, catalog & TMDB integration** |
+| **State** | ✅ **Implementation complete** — all code, tests, builds, live smoke verified (2026-10-31). **One input pending: TMDB read access token** → live-data verification |
+| **App runnable?** | Yes — `npm run dev`. Without a TMDB token, catalog endpoints return a clear 502 envelope and the UI shows designed error states with working retry. With the token, live data flows with zero code changes |
+| **Next** | Add `TMDB_READ_ACCESS_TOKEN` to `server/.env` → verify live data → approval for Phase 3 |
 
 ## Phase Tracker
 
 | Phase | Theme | Status | Notes |
 |---|---|---|---|
-| 0 | Documentation & reconciliation | ✅ done | All six docs reconciled to the streaming-platform spec (v2) |
-| 1 | Foundation & premium UI shell | ✅ **done** | Monorepo, hardened API skeleton, branded dark-cinema UI, 28 tests green |
-| 2 | Homepage, catalog & TMDB | ⬜ pending | Needs `TMDB_READ_ACCESS_TOKEN` for verification |
+| 0 | Documentation & reconciliation | ✅ done | Six docs reconciled to the streaming spec (v2) |
+| 1 | Foundation & premium UI shell | ✅ done | 2026-10-31 |
+| 2 | Homepage, catalog & TMDB | 🟡 **code done, live-data verification pending token** | see DoD below |
 | 3 | Details, search & filters | ⬜ pending | |
 | 4 | PostgreSQL, auth & profiles | ⬜ pending | ⚑ ADR #3 embedded-postgres sign-off needed |
-| 5 | Watchlist, favorites, history, progress | ⬜ pending | ⚑ ADR #9 TanStack Query sign-off needed |
+| 5 | Watchlist, favorites, history, progress | ⬜ pending | TanStack Query already adopted (Phase 2) |
 | 6 | Video player & authorized streaming | ⬜ pending | Requires FFmpeg/FFprobe on host |
 | 7 | Admin dashboard & content management | ⬜ pending | |
 | 8 | Hardening, testing & deployment | ⬜ pending | |
 
-## Phase 1 — Definition of Done (verified 2026-10-31)
+## Phase 2 — Definition of Done
 
-- [x] `npm install` → `npm run dev` starts server (:3000) + client (:5173) together; client proxies `/api/v1/health` (verified live: proxy returned `{"status":"ok",...}` through :5173)
-- [x] `GET /api/v1/health` → `200 {status:"ok", version:"0.1.0", uptime}` with `X-Request-Id` + full helmet security headers; unknown API route → 404 error envelope (verified live via curl)
-- [x] Landing renders wordmark, tagline, navbar, footer; unknown URL → styled cinematic 404 with working Home link; page transitions animate and respect `prefers-reduced-motion`
-- [x] `npm test` green — **server 19/19, client 9/9**
-- [x] `npm run lint` → **0 errors, 0 warnings**
-- [x] `npm run build` succeeds for **both** packages (client: 402 KB JS / 129 KB gzip, 32 KB CSS; server: clean tsc output)
-- [x] Palette tokens verified in **built** CSS — all 8 spec hex values present (`#08090D #11131B #171A24 #8B5CF6 #38BDF8 #D6B36A #F8FAFC #A1A1AA`)
-- [x] Server boots fail-fast on invalid env (unit-tested); no secrets in repo (`.env` gitignored, `.env.example` committed)
-- [x] `git` initialized on `main`; clean commits; `DEVELOPMENT_PROGRESS.md` updated
+- [x] TMDB service: bearer client (8 s timeout, 1 retry on network/5xx/429), DTO normalizers (movie/tv field mapping, per-item `media_type` inference), TTL cache + single-flight, upstream error mapping (404→NOT_FOUND, 401→UPSTREAM_ERROR, 429→RATE_LIMITED, network→UPSTREAM_ERROR)
+- [x] Catalog API: `/movies/{trending,popular,top-rated,upcoming,genre/:id}`, `/tv/{trending,popular,top-rated,on-the-air,genre/:id}`, `/discover`, `/genres` — Zod-validated params (page 1–500, window day/week, mediaType whitelist)
+- [x] Client: TanStack Query layer (ADR #9), typed api client with error-envelope mapping, `useCatalogList`/`useCatalogGenre`/`useGenres` hooks with URL-driven pagination
+- [x] Homepage: rotating cinematic hero (trending day, auto-advance + slide dots, `prefers-reduced-motion` aware) + 10 rows (Trending Now, Popular Movies, Top Rated, Latest Releases, Action, Sci-Fi, Drama, Horror, Comedy, Popular TV) with genre-name lookup
+- [x] Pages: `/movies`, `/series`, `/genres`, `/genre/:id?type=` — paginated grids with URL state; Navbar gains Movies/Series/Genres; footer gains required TMDB attribution
+- [x] States: skeletons (hero/row/grid), designed error states with wired retry per row/page, empty states; no fake rows — "Recommended For You"/"Continue Watching" correctly absent until Phases 5–6
+- [x] Cards are non-clickable (detail pages = Phase 3); no search box yet; no Watch buttons anywhere
+- [x] Tests: **server 37/37** (cache single-flight/TTL/failure, route happy/error/validation incl. cache-hit-serves-second-request), **client 28/28** (apiClient envelope mapping, MediaCard, MediaRow, ErrorState, HomePage rows+links+error, MoviesPage pagination via URL, App nav+attribution)
+- [x] `npm run lint` → 0 problems · typechecks clean both workspaces · production builds both succeed (client 145 KB gzip)
+- [x] **Token isolation:** TMDB token lives only in `server/.env`; browser only ever calls `/api/v1/*` (verified live via proxy + code); no key material in client bundle
+- [x] **Live smoke (no token):** `/api/v1/movies/trending` → 502 `UPSTREAM_ERROR` "TMDB is not configured — set TMDB_READ_ACCESS_TOKEN in server/.env"; homepage renders hero error card + 10 per-row error cards with retry (browser-verified); `/genres` error states render; validation 400 with field details; attribution visible
+- [ ] **Live smoke (with token):** pending user-provided token → real posters/rows/hero verification
 
-## Issues fixed during verification
+## Issues fixed during Phase 2
 
 | Issue | Fix |
 |---|---|
-| `AnimatePresence` imported from `react-router-dom` (doesn't exist there) | Moved to `framer-motion` import in `client/src/App.tsx` |
-| `@testing-library/user-event` used but undeclared | Added to client devDependencies |
-| `useReducedMotion()` returns `boolean \| null` broke strict TS | Widened `AuroraBlob` prop type |
-| jsdom lacks `IntersectionObserver` (Framer Motion `whileInView`) | Stub added to `client/src/test/setup.ts` |
-| Curly apostrophe (`&rsquo;`) didn't match test regex | Test regex updated to match rendered text |
-| Root `eslint.config.js` module-type warning | Added `"type": "module"` to root `package.json` |
-
-## Environment Audit (2026-10-31)
-
-| Item | Finding |
-|---|---|
-| OS / shell | Windows 10 x64, Git Bash |
-| Node.js / npm | v24.21.0 / 11.19.0 (no pnpm/yarn) |
-| git | 2.56.0 — repo initialized on `main` |
-| Docker / PostgreSQL | not installed → embedded-postgres proposed for Phase 4 (⚑ ADR #3) |
-| TMDB API | endpoint reachable; **read access token needed for Phase 2** |
-| Ports | 5432 / 3000 / 5173 free |
+| `createApp` dropped its `fetchImpl` option — tests hit real network | Seam wired through to `CatalogService`/`TmdbClient` |
+| Error handler masked **all** 5xx messages, hiding actionable "TMDB is not configured" | Mask only unexpected `INTERNAL_ERROR`s |
+| `vi.mock` called inside a helper ran after ES-import evaluation → real API used in tests | Hoisted top-level `vi.mock` blocks per test file |
+| Stale Phase-1 smoke-test `node.exe` survived TaskStop on port 3000, intercepting test fetches | Killed by PID; smoke tests now always kill by port afterwards |
+| Mixed movie/tv payloads normalized with endpoint type only | Per-item `media_type` inference from TMDB payloads |
+| `CatalogListItem` lacked `overview` (needed by hero) | Added through server normalizer + client type + tests |
+| Various TS strictness issues (`AnimatePresence` import source, nullable `useReducedMotion`, `string|null` params, unused vars) | Fixed; typecheck clean |
 
 ## Open Items (decisions / inputs needed from user)
 
 | # | Item | Needed by |
 |---|---|---|
-| 1 | Approval to begin **Phase 2** | now |
-| 2 | `TMDB_READ_ACCESS_TOKEN` (v4) for `server/.env` | Phase 2 verification |
+| 1 | **`TMDB_READ_ACCESS_TOKEN` (v4)** — add to `server/.env` (copy from `server/.env.example`) | Phase 2 live verification |
+| 2 | Approval to begin **Phase 3** | after token verification |
 | 3 | ⚑ ADR #3 — embedded-postgres for local dev | Phase 4 |
-| 4 | ⚑ ADR #9 — TanStack Query for server state | Phase 2 |
 
 ## Changelog
 
 | Date | Phase | Entry |
 |---|---|---|
-| 2026-10-31 | 1 | **Phase 1 complete.** Server: Express 5 + TS (ESM), zod-validated fail-fast env, pino + requestId, helmet/CORS, in-memory rate limiter, central error envelope, `/health`, graceful shutdown; 19 integration/unit tests. Client: Vite 6 + React 19 + TS, Tailwind v4 token layer with exact spec palette, Cinzel + Inter, React Router, Framer Motion transitions, branded landing, cinematic 404, Navbar/Footer, UI primitives (Button/Skeleton/Spinner/EmptyState); 9 tests. Root: npm workspaces, strict TS base, flat ESLint, Prettier, cross-platform scripts. Verified: typecheck ×2, tests 28/28, builds ×2, lint 0, live smoke (health + proxy + 404 + palette), git initialized. |
-| 2026-10-31 | 0 | Environment audited; six planning docs created then reconciled to the full streaming-platform specification (v2): profiles, local catalog, streaming pipeline, admin, reviews; phase plan re-cut to 8 phases per spec. |
+| 2026-10-31 | 2 | **Phase 2 implemented.** Server: TmdbClient + TmdbCache (single-flight) + normalizers + CatalogService + 13 catalog routes with validation; 18 new tests. Client: TanStack Query adoption, apiClient with envelope mapping, Hero/MediaRow/MediaCard/ErrorState/skeletons, home with hero + 10 rows, 4 catalog pages with URL pagination, navbar/footer wiring, attribution; 19 new tests. Verified: 65/65 tests, typecheck ×2, lint 0, builds ×2, browser smoke of error states. Token requested from user for live verification. |
+| 2026-10-31 | 1 | **Phase 1 complete.** Monorepo, hardened API skeleton, premium UI shell, 28 tests, builds, git initialized. |
+| 2026-10-31 | 0 | Environment audited; six planning docs reconciled to the streaming-platform spec (v2). |

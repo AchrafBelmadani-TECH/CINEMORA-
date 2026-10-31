@@ -27,6 +27,10 @@ export class AppError extends Error {
     this.name = 'AppError';
   }
 
+  static isAppError(err: unknown): err is AppError {
+    return err instanceof AppError;
+  }
+
   static badRequest(message = 'Invalid request', details?: unknown) {
     return new AppError('VALIDATION_ERROR', 400, message, details);
   }

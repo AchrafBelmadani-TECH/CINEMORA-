@@ -1,144 +1,119 @@
-import { motion, useReducedMotion } from 'framer-motion';
-import { Bookmark, Clapperboard, Play } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useCatalogGenre, useCatalogList, useGenres } from '@/hooks/useCatalog';
+import { MediaRow } from '@/components/media/MediaRow';
+import { Hero } from '@/components/media/Hero';
+import { HeroSkeleton, RowSkeleton } from '@/components/media/skeletons';
+import { ErrorState } from '@/components/ui/ErrorState';
+import type { Paginated, CatalogListItem } from '@/types/catalog';
 
-const pillars = [
-  {
-    icon: Clapperboard,
-    title: 'Discover',
-    text: 'Trending films and series, curated collections and deep search — one cinematic home for everything worth watching.',
-  },
-  {
-    icon: Bookmark,
-    title: 'Your library',
-    text: 'Watchlists, favorites and viewing history, kept in your own personal profile and ready on every visit.',
-  },
-  {
-    icon: Play,
-    title: 'Watch',
-    text: 'A beautiful player for legally available content — with subtitles, resume-where-you-left-off and next episode.',
-  },
-] as const;
+interface RowQuery {
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+  data?: Paginated<CatalogListItem>;
+}
 
-function AuroraBlob({
-  className,
-  drift,
-  reduceMotion,
+function RowSection({
+  title,
+  link,
+  query,
+  genreNameFor,
 }: {
-  className: string;
-  drift: { x: number[]; y: number[] };
-  reduceMotion: boolean | null;
+  title: string;
+  link?: { to: string; label: string };
+  query: RowQuery;
+  genreNameFor?: (genreId: number) => string | undefined;
 }) {
   return (
-    <motion.div
-      aria-hidden
-      className={`pointer-events-none absolute rounded-full blur-3xl ${className}`}
-      animate={reduceMotion ? undefined : { x: drift.x, y: drift.y }}
-      transition={
-        reduceMotion
-          ? undefined
-          : { duration: 22, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }
-      }
-    />
+    <section className="mb-8 sm:mb-10">
+      <div className="mb-3 flex items-center justify-between px-4 sm:px-6">
+        <h2 className="font-display text-lg font-bold tracking-wide text-ink sm:text-xl">{title}</h2>
+        {link && (
+          <Link
+            to={link.to}
+            className="inline-flex items-center gap-1 text-xs font-medium text-muted transition-colors hover:text-gold sm:text-sm"
+          >
+            {link.label}
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Link>
+        )}
+      </div>
+
+      {query.isPending ? (
+        <RowSkeleton />
+      ) : query.isError ? (
+        <div className="px-4 sm:px-6">
+          <ErrorState
+            compact
+            title="Could not load this collection"
+            message="The catalog service did not respond. This usually recovers on retry."
+            onRetry={query.refetch}
+          />
+        </div>
+      ) : (
+        <MediaRow title={title} items={query.data?.items ?? []} genreNameFor={genreNameFor} />
+      )}
+    </section>
   );
 }
 
 /**
- * Phase 1 landing: the brand shell. Real catalog content (hero backdrops,
- * poster rows) arrives with the TMDB integration in Phase 2 — nothing here
- * pretends otherwise.
+ * Phase 2 homepage: cinematic hero + the curated collection rows.
+ * "Recommended For You" and "Continue Watching" arrive with personalization
+ * (Phases 5–6) and are intentionally absent until they can be real.
  */
 export function HomePage() {
-  const reduceMotion = useReducedMotion();
+  const hero = useCatalogList({ mediaType: 'movie', kind: 'trending', window: 'day' });
+  const genres = useGenres('movie');
+  const genreNameFor = (genreId: number) => genres.data?.find((g) => g.id === genreId)?.name;
+
+  const trending = useCatalogList({ mediaType: 'movie', kind: 'trending', window: 'week' });
+  const popular = useCatalogList({ mediaType: 'movie', kind: 'popular' });
+  const topRated = useCatalogList({ mediaType: 'movie', kind: 'top-rated' });
+  const latest = useCatalogList({ mediaType: 'movie', kind: 'latest' });
+  const popularTv = useCatalogList({ mediaType: 'tv', kind: 'popular' });
+
+  // Fixed genre rows (TMDB's stable genre ids), one hook each.
+  const action = useCatalogGenre('movie', 28);
+  const sciFi = useCatalogGenre('movie', 878);
+  const drama = useCatalogGenre('movie', 18);
+  const horror = useCatalogGenre('movie', 27);
+  const comedy = useCatalogGenre('movie', 35);
 
   return (
     <div>
-      {/* Brand hero */}
-      <section className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden">
-        <AuroraBlob
-          className="left-[-10%] top-[-15%] h-[34rem] w-[34rem] bg-primary/20"
-          drift={{ x: [0, 60, 0], y: [0, 40, 0] }}
-          reduceMotion={reduceMotion}
-        />
-        <AuroraBlob
-          className="right-[-12%] top-[10%] h-[30rem] w-[30rem] bg-accent/15"
-          drift={{ x: [0, -50, 0], y: [0, 60, 0] }}
-          reduceMotion={reduceMotion}
-        />
-        <AuroraBlob
-          className="bottom-[-25%] left-[30%] h-[26rem] w-[26rem] bg-gold/10"
-          drift={{ x: [0, 30, 0], y: [0, -40, 0] }}
-          reduceMotion={reduceMotion}
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-base"
-        />
-
-        <div className="relative z-10 mx-auto max-w-3xl px-6 py-24 text-center">
-          <motion.p
-            initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="text-xs font-medium tracking-[0.4em] text-gold"
-          >
-            THE PREMIUM HOME OF CINEMA
-          </motion.p>
-
-          <motion.h1
-            initial={{ opacity: 0, y: reduceMotion ? 0 : 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
-            className="mt-6 bg-gradient-to-b from-ink via-ink to-gold/80 bg-clip-text font-display text-6xl font-bold tracking-[0.08em] text-transparent sm:text-7xl md:text-8xl"
-          >
-            CINEMORA
-          </motion.h1>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
-            className="mx-auto mt-8 h-px w-24 bg-gradient-to-r from-transparent via-gold to-transparent"
+      {hero.isPending ? (
+        <HeroSkeleton />
+      ) : hero.isError ? (
+        <div className="px-4 pt-10 sm:px-6">
+          <ErrorState
+            title="The premieres are delayed"
+            message="We could not reach the movie catalog. Verify your connection — or ask the operator to configure TMDB access — and try again."
+            onRetry={hero.refetch}
           />
-
-          <motion.p
-            initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-            className="mx-auto mt-8 max-w-xl text-balance text-base leading-relaxed text-muted sm:text-lg"
-          >
-            Discover films and series. Build your library. Watch what is yours — beautifully,
-            legally, without compromise.
-          </motion.p>
         </div>
-      </section>
+      ) : (
+        <Hero items={(hero.data?.items ?? []).slice(0, 5)} />
+      )}
 
-      {/* Pillars */}
-      <section aria-label="What CINEMORA offers" className="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
-        <div className="grid gap-6 md:grid-cols-3">
-          {pillars.map((pillar, index) => (
-            <motion.article
-              key={pillar.title}
-              initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.5, delay: index * 0.08, ease: 'easeOut' }}
-              className="rounded-xl border border-white/5 bg-card/70 p-7 backdrop-blur-sm transition-colors duration-300 hover:border-gold/20"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-gold/25 bg-surface text-gold shadow-gold">
-                <pillar.icon className="h-5 w-5" aria-hidden />
-              </span>
-              <h2 className="mt-5 font-display text-lg font-bold tracking-wide text-ink">
-                {pillar.title}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{pillar.text}</p>
-            </motion.article>
-          ))}
-        </div>
-
-        <p className="mt-14 text-center text-xs tracking-wide text-muted/70">
-          Phase 1 of 8 — foundation laid. The curtain rises with the live movie catalog in Phase 2.
-        </p>
-      </section>
+      <div className="mx-auto max-w-7xl pt-8 sm:pt-10">
+        <RowSection title="Trending Now" link={{ to: '/movies', label: 'Browse movies' }} query={trending} genreNameFor={genreNameFor} />
+        <RowSection title="Popular Movies" link={{ to: '/movies', label: 'Browse movies' }} query={popular} genreNameFor={genreNameFor} />
+        <RowSection title="Top Rated" query={topRated} genreNameFor={genreNameFor} />
+        <RowSection title="Latest Releases" query={latest} genreNameFor={genreNameFor} />
+        <RowSection title="Action Movies" query={action} genreNameFor={genreNameFor} />
+        <RowSection title="Science Fiction" query={sciFi} genreNameFor={genreNameFor} />
+        <RowSection title="Drama" query={drama} genreNameFor={genreNameFor} />
+        <RowSection title="Horror" query={horror} genreNameFor={genreNameFor} />
+        <RowSection title="Comedy" query={comedy} genreNameFor={genreNameFor} />
+        <RowSection
+          title="Popular TV Series"
+          link={{ to: '/series', label: 'Browse series' }}
+          query={popularTv}
+          genreNameFor={genreNameFor}
+        />
+      </div>
     </div>
   );
 }
