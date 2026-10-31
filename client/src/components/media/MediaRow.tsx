@@ -8,6 +8,8 @@ export interface MediaRowProps {
   items: CatalogListItem[];
   /** Resolves a genre name for the card sub-line. */
   genreNameFor?: (genreId: number) => string | undefined;
+  /** Suppress the built-in heading when the parent already renders one. */
+  hideHeading?: boolean;
 }
 
 /**
@@ -15,7 +17,7 @@ export interface MediaRowProps {
  * scrollable when focused, with scroll buttons on desktop that appear only
  * when there is something to scroll toward.
  */
-export function MediaRow({ title, items, genreNameFor }: MediaRowProps) {
+export function MediaRow({ title, items, genreNameFor, hideHeading = false }: MediaRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
@@ -47,9 +49,11 @@ export function MediaRow({ title, items, genreNameFor }: MediaRowProps) {
 
   return (
     <section aria-label={title} className="group/row relative">
-      <h2 className="mb-3 px-4 font-display text-lg font-bold tracking-wide text-ink sm:px-6 sm:text-xl">
-        {title}
-      </h2>
+      {!hideHeading && (
+        <h2 className="mb-3 px-4 font-display text-lg font-bold tracking-wide text-ink sm:px-6 sm:text-xl">
+          {title}
+        </h2>
+      )}
 
       <div className="relative">
         {canLeft && (

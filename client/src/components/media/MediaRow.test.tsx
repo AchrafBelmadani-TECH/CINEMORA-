@@ -13,6 +13,11 @@ describe('MediaRow', () => {
     expect(screen.getAllByText(/Action/).length).toBeGreaterThan(0);
   });
 
+  it('can suppress its own heading when the parent renders one', () => {
+    render(<MediaRow title="Trending Now" items={makePage(2).items} hideHeading />);
+    expect(screen.queryByRole('heading', { name: 'Trending Now' })).toBeNull();
+  });
+
   it('renders nothing (no fake empty row) when there are no items', () => {
     const { container } = render(<MediaRow title="Empty Row" items={[]} />);
     expect(container).toBeEmptyDOMElement();

@@ -52,7 +52,7 @@ function RowSection({
           />
         </div>
       ) : (
-        <MediaRow title={title} items={query.data?.items ?? []} genreNameFor={genreNameFor} />
+        <MediaRow title={title} items={query.data?.items ?? []} genreNameFor={genreNameFor} hideHeading />
       )}
     </section>
   );
