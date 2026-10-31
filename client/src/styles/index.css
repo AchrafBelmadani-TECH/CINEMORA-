@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+/*
+ * CINEMORA design tokens — the single source of the visual identity.
+ * Palette is mandated by the product specification (do not deviate).
+ */
+@theme {
+  /* backgrounds */
+  --color-base: #08090d; /* deep black — page background */
+  --color-surface: #11131b; /* secondary background */
+  --color-card: #171a24; /* cards & panels */
+
+  /* brand */
+  --color-primary: #8b5cf6; /* electric purple */
+  --color-accent: #38bdf8; /* neon blue */
+  --color-gold: #d6b36a; /* premium gold */
+
+  /* text */
+  --color-ink: #f8fafc; /* primary text */
+  --color-muted: #a1a1aa; /* secondary text */
+
+  /* typography */
+  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* glows — used sparingly, on interactive/premium elements only */
+  --shadow-glow: 0 0 24px rgb(139 92 246 / 0.35);
+  --shadow-glow-blue: 0 0 24px rgb(56 189 248 / 0.3);
+  --shadow-gold: 0 0 18px rgb(214 179 106 / 0.25);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-base font-sans text-ink antialiased;
+  }
+
+  ::selection {
+    background: rgb(214 179 106 / 0.3);
+    color: #f8fafc;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* slim, dark scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2e3d transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2e3d;
+    border: 2px solid var(--color-base);
+    border-radius: 999px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+coverage/
+
+# environment & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# local media storage (Phase 6+)
+storage/
+
+# local database data (embedded postgres, Phase 4+)
+server/.pgdata/
+
+# logs & os noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
