@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Phase** | **2 of 8 — Homepage, navigation, catalog & TMDB integration** |
-| **State** | ✅ **COMPLETE** — token configured, live TMDB data verified end-to-end in browser and production build (2026-10-31) |
-| **App runnable?** | Yes — `npm run dev`. Live posters, titles, ratings, genre names, hero and all catalog pages verified against real TMDB data |
-| **Next** | Phase 3 — details, seasons/episodes, search & filters (**awaiting user approval**) |
+| **Phase** | **3 of 8 — Details, seasons/episodes, search & filters** |
+| **State** | ✅ **COMPLETE** — implemented, tested (99/99), built, and live-verified in the browser (2026-10-31) |
+| **App runnable?** | Yes — `npm run dev`. Detail pages, person pages, search with suggestions, and advanced discovery all live against real TMDB data |
+| **Next** | Phase 4 — PostgreSQL, authentication & profiles (**awaiting user approval**; ⚑ ADR #3 embedded-postgres sign-off needed) |
 
 ## Phase Tracker
 
@@ -17,28 +17,29 @@
 |---|---|---|---|
 | 0 | Documentation & reconciliation | ✅ done | Six docs reconciled to the streaming spec (v2) |
 | 1 | Foundation & premium UI shell | ✅ done | 2026-10-31 |
-| 2 | Homepage, catalog & TMDB | ✅ **done** | Live data verified 2026-10-31; see DoD below |
-| 3 | Details, search & filters | ⬜ pending | |
+| 2 | Homepage, catalog & TMDB | ✅ done | Live data verified 2026-10-31 |
+| 3 | Details, search & filters | ✅ **done** | Browser-verified 2026-10-31; see DoD below |
 | 4 | PostgreSQL, auth & profiles | ⬜ pending | ⚑ ADR #3 embedded-postgres sign-off needed |
-| 5 | Watchlist, favorites, history, progress | ⬜ pending | TanStack Query already adopted (Phase 2) |
+| 5 | Watchlist, favorites, history, progress | ⬜ pending | |
 | 6 | Video player & authorized streaming | ⬜ pending | Requires FFmpeg/FFprobe on host |
 | 7 | Admin dashboard & content management | ⬜ pending | |
 | 8 | Hardening, testing & deployment | ⬜ pending | |
 
-## Phase 2 — Definition of Done
+## Phase 3 — Definition of Done (verified 2026-10-31)
 
-- [x] TMDB service: bearer client (8 s timeout, 1 retry on network/5xx/429), DTO normalizers (movie/tv field mapping, per-item `media_type` inference), TTL cache + single-flight, upstream error mapping (404→NOT_FOUND, 401→UPSTREAM_ERROR, 429→RATE_LIMITED, network→UPSTREAM_ERROR)
-- [x] Catalog API: `/movies/{trending,popular,top-rated,upcoming,genre/:id}`, `/tv/{trending,popular,top-rated,on-the-air,genre/:id}`, `/discover`, `/genres` — Zod-validated params (page 1–500, window day/week, mediaType whitelist)
-- [x] Client: TanStack Query layer (ADR #9), typed api client with error-envelope mapping, `useCatalogList`/`useCatalogGenre`/`useGenres` hooks with URL-driven pagination
-- [x] Homepage: rotating cinematic hero (trending day, auto-advance + slide dots, `prefers-reduced-motion` aware) + 10 rows (Trending Now, Popular Movies, Top Rated, Latest Releases, Action, Sci-Fi, Drama, Horror, Comedy, Popular TV) with genre-name lookup
-- [x] Pages: `/movies`, `/series`, `/genres`, `/genre/:id?type=` — paginated grids with URL state; Navbar gains Movies/Series/Genres; footer gains required TMDB attribution
-- [x] States: skeletons (hero/row/grid), designed error states with wired retry per row/page, empty states; no fake rows — "Recommended For You"/"Continue Watching" correctly absent until Phases 5–6
-- [x] Cards are non-clickable (detail pages = Phase 3); no search box yet; no Watch buttons anywhere
-- [x] Tests: **server 37/37** (cache single-flight/TTL/failure, route happy/error/validation incl. cache-hit-serves-second-request), **client 28/28** (apiClient envelope mapping, MediaCard, MediaRow, ErrorState, HomePage rows+links+error, MoviesPage pagination via URL, App nav+attribution)
-- [x] `npm run lint` → 0 problems · typechecks clean both workspaces · production builds both succeed (client 145 KB gzip)
-- [x] **Token isolation:** TMDB token lives only in `server/.env`; browser only ever calls `/api/v1/*` (verified live via proxy + code); no key material in client bundle
-- [x] **Live smoke (no token):** `/api/v1/movies/trending` → 502 `UPSTREAM_ERROR` "TMDB is not configured — set TMDB_READ_ACCESS_TOKEN in server/.env"; homepage renders hero error card + 10 per-row error cards with retry (browser-verified); `/genres` error states render; validation 400 with field details; attribution visible
-- [x] **Live verification (with token):** user's v4 token loaded from `server/.env` (dotenv); `/movies/trending` returns real October-2026 titles with ratings/posters; genres, discover, TV, cache-served second call all verified; homepage hero (real backdrop + overview + slide tabs), all rows with resolved genre names; `/movies` page shows "Page 1 of 500 · 20,001 titles" with 20/20 posters loaded; **201 images from image.tmdb.org, 0 broken**; production build (`node dist/server.js`) serves live data. *Pixel screenshots time out under the hero's continuous crossfade animation — DOM-level checks used instead (stronger evidence)*
+- [x] **Detail API**: `/movies/:id` & `/tv/:id` via a single upstream `append_to_response` call (credits, videos, recommendations with similar-fallback); `/tv/:id/season/:n`; `/people/:id` (combined credits → known-for + deduped filmography); trailers filtered to official YouTube trailers/teasers only
+- [x] **Search API**: `/search/multi` with typed movie/tv/person results, adult content excluded, 2-min cache
+- [x] **Discover API**: genres csv, year bounds (mapped per media type), min rating (+ automatic vote_count floor), original language, whitelisted sorts mapped to `primary_release_date`/`first_air_date`; invalid params → 400
+- [x] **Detail pages**: cinematic backdrop + poster, title/tagline, date · runtime (or per-episode runtime) · seasons/episodes · status, rating ring + vote count, genre chips linking to genre pages, director/creator, cast strip linking to person pages, overview, **Watch trailer modal** (YouTube-nocookie embed, Esc/backdrop close, focus management), "More like this" row
+- [x] **TV seasons**: season pills synced to `?season=` URL param, episode list with stills, numbers, overviews, air dates, runtimes, ratings; skeleton + error states
+- [x] **Person pages**: profile photo, facts (department, lifespan, origin), biography, known-for grid, filmography list linking both ways
+- [x] **Search**: navbar combobox with 300 ms debounced suggestions (movies/series/people), Enter → `/search?q=`; results page with pagination, person result cards, empty/error states
+- [x] **Discover page**: URL-driven panel — media type toggle, genre chips, year range, min rating, language, sort — composable, clear-all, pagination, empty state
+- [x] **Navigation**: cards + hero "More information" link to detail pages; navbar gains Discover + search; ScrollToTop on route change
+- [x] **Tests**: server **50/50** (18 new: detail normalization ×2, season + cache, person dedupe, search typing + validation + cache, discover mapping/validation), client **49/49** (21 new: card links, trailer modal, detail movie/TV, person, search page + empty, discover filters via URL state, SearchBar debounce)
+- [x] **Quality gates**: typecheck ×2 clean · lint 0 · production builds clean · **99/99 total**
+- [x] **Browser-verified live**: Dune detail (real cast/director/12 videos/20 recs), GoT seasons & episodes, "star wars" search (240 results), Nolan person page (12 known-for, 78 filmography), filtered discover (152 sci-fi titles), trailer modal embedding the official YouTube trailer; TV default-season bug found & fixed (season 0 "Specials" shadowed Season 1 via `Number(null)`)
+- [x] **No fake streaming**: no play buttons for content; trailer embed is the only video, clearly labeled; footer states streaming arrives only with licensed sources
 
 ## Issues fixed during Phase 2
 
@@ -60,7 +61,7 @@
 
 | # | Item | Needed by |
 |---|---|---|
-| 1 | Approval to begin **Phase 3** (details, seasons/episodes, search & filters) | now |
+| 1 | Approval to begin **Phase 4** (PostgreSQL, auth, profiles) | now |
 | 2 | ⚑ ADR #3 — embedded-postgres for local dev | Phase 4 |
 
 ## Changelog
