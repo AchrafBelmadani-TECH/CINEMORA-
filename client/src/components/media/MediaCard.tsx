@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom';
 import { Film, Star } from 'lucide-react';
 import { posterUrl } from '@/lib/tmdbImage';
+import { titlePath } from '@/lib/formatters';
 import type { CatalogListItem } from '@/types/catalog';
 import { cn } from '@/lib/cn';
 
@@ -17,9 +19,8 @@ function yearOf(releaseDate: string | null): string | null {
 }
 
 /**
- * Poster card: title, year, rating, optional genre.
- * Deliberately NOT a link/button yet — detail pages arrive in Phase 3
- * (no dead navigation).
+ * Poster card: title, year, rating, optional genre — links to the detail page
+ * (available since Phase 3).
  */
 export function MediaCard({ item, genreName, fluid = false, className }: MediaCardProps) {
   const url = posterUrl(item.posterPath);
@@ -27,9 +28,11 @@ export function MediaCard({ item, genreName, fluid = false, className }: MediaCa
   const rating = item.voteAverage > 0 ? item.voteAverage.toFixed(1) : null;
 
   return (
-    <article
+    <Link
+      to={titlePath(item.mediaType, item.tmdbId)}
+      aria-label={`${item.title}${year ? ` (${year})` : ''}`}
       className={cn(
-        'group relative overflow-hidden rounded-xl border border-white/5 bg-card transition-all duration-300',
+        'group relative block overflow-hidden rounded-xl border border-white/5 bg-card transition-all duration-300',
         fluid ? 'w-full' : 'w-[9.5rem] shrink-0 sm:w-[11rem]',
         'hover:-translate-y-1 hover:border-gold/25 hover:shadow-glow',
         className,
@@ -71,6 +74,6 @@ export function MediaCard({ item, genreName, fluid = false, className }: MediaCa
           {[year, genreName ?? (item.mediaType === 'tv' ? 'Series' : 'Movie')].filter(Boolean).join(' · ')}
         </p>
       </div>
-    </article>
+    </Link>
   );
 }

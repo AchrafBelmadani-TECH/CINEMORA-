@@ -51,7 +51,14 @@ vi.mock('@/services/catalogApi', () => ({
       { id: 18, name: 'Drama' },
     ]),
   ),
-}));
+  fetchMovieDetail: vi.fn(),
+  fetchTvDetail: vi.fn(),
+  fetchSeason: vi.fn(),
+  fetchPerson: vi.fn(),
+  fetchSearch: vi.fn(),
+  fetchDiscover: vi.fn(),
+        discoverParams: vi.fn((filters) => ({ ...filters })),
+  }));
 
 describe('HomePage (Phase 2)', () => {
   it('renders the hero and the curated collection rows from real API data', async () => {
@@ -94,6 +101,7 @@ describe('HomePage (Phase 2)', () => {
       fetchList: vi.fn(() => Promise.reject(new Error('boom'))),
       fetchByGenre: vi.fn(() => Promise.reject(new Error('boom'))),
       fetchGenres: vi.fn(() => Promise.reject(new Error('boom'))),
+            discoverParams: vi.fn((filters) => ({ ...filters })),
     }));
     const { HomePage: FailingHomePage } = await import('./HomePage');
     const user = userEvent.setup();

@@ -26,7 +26,14 @@ vi.mock('@/services/catalogApi', () => ({
   ),
   fetchByGenre: vi.fn(() => Promise.resolve({ page: 1, totalPages: 1, totalResults: 6, items: [] })),
   fetchGenres: vi.fn(() => Promise.resolve([{ id: 28, name: 'Action' }])),
-}));
+  fetchMovieDetail: vi.fn(),
+  fetchTvDetail: vi.fn(),
+  fetchSeason: vi.fn(),
+  fetchPerson: vi.fn(),
+  fetchSearch: vi.fn(),
+  fetchDiscover: vi.fn(),
+        discoverParams: vi.fn((filters) => ({ ...filters })),
+  }));
 
 describe('App shell', () => {
   it('renders navbar with the full Phase 2 navigation and footer', () => {

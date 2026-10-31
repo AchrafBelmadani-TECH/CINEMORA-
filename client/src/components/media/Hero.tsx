@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Star } from 'lucide-react';
+import { Info, Star } from 'lucide-react';
 import { backdropUrl } from '@/lib/tmdbImage';
+import { titlePath } from '@/lib/formatters';
 import type { CatalogListItem } from '@/types/catalog';
 
 export interface HeroProps {
@@ -88,6 +90,13 @@ export function Hero({ items }: HeroProps) {
             <p className="mt-4 line-clamp-3 max-w-xl text-sm leading-relaxed text-ink/80 sm:text-base">
               {featured.overview}
             </p>
+            <Link
+              to={titlePath(featured.mediaType, featured.tmdbId)}
+              className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg bg-gradient-to-r from-primary to-accent px-6 text-sm font-semibold text-white shadow-glow transition-all duration-200 hover:brightness-110"
+            >
+              <Info className="h-4 w-4" aria-hidden />
+              More information
+            </Link>
           </motion.div>
         </AnimatePresence>
 
