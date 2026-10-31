@@ -14,8 +14,12 @@ const envSchema = z.object({
   // Phase 2+
   TMDB_READ_ACCESS_TOKEN: z.string().min(1).optional(),
 
-  // Phase 4+
-  DATABASE_URL: z.string().min(1).optional(),
+  // Phase 4+ — local default points at the embedded dev Postgres; staging and
+  // production override DATABASE_URL with a managed instance.
+  DATABASE_URL: z
+    .string()
+    .min(1)
+    .default('postgresql://cinemora@localhost:5433/cinemora'),
   JWT_SECRET: z.string().min(32).optional(),
 
   // Phase 6+
@@ -23,6 +27,10 @@ const envSchema = z.object({
   STORAGE_ROOT: z.string().min(1).default('./storage'),
   FFMPEG_PATH: z.string().min(1).optional(),
   FFPROBE_PATH: z.string().min(1).optional(),
+
+  // Interim bootstrap-admin credential for the sync API until USER/ADMIN
+  // RBAC ships (Phase 5). Unset → admin routes return 503 (disabled).
+  ADMIN_BOOTSTRAP_TOKEN: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

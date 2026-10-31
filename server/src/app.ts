@@ -10,8 +10,12 @@ import { accessLog } from './middleware/accessLog.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { catalogRoutes } from './routes/catalog.routes.js';
+import { libraryRoutes } from './routes/library.routes.js';
 import { CatalogController } from './controllers/catalog.controller.js';
 import { CatalogService } from './services/tmdb/catalog.service.js';
+import { TmdbClient } from './services/tmdb/tmdbClient.js';
+import { CatalogSyncService } from './services/library/sync.service.js';
+import { LibraryService } from './services/library/library.service.js';
 
 export interface AppOptions {
   env: Env;
@@ -49,9 +53,13 @@ export function createApp(options: AppOptions) {
     logger.warn('TMDB_READ_ACCESS_TOKEN is not set — catalog endpoints will return 502 until server/.env provides one');
   }
 
+  const tmdbClient = new TmdbClient({ token: env.TMDB_READ_ACCESS_TOKEN, logger, fetchImpl: options.fetchImpl });
+  const sync = new CatalogSyncService(tmdbClient, logger);
+
   const api = express.Router();
   api.use(healthRoutes());
   api.use(catalogRoutes(new CatalogController(catalog)));
+  api.use(libraryRoutes({ sync, library: new LibraryService(), env }));
 
   if (options.testRoutes) {
     api.get('/__test/error', () => {

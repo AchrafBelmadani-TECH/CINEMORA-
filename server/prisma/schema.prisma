@@ -1,0 +1,404 @@
+// CINEMORA — data foundation (Phase 4).
+// Personal-data models follow docs/DATABASE_DESIGN.md §4–5; catalog and
+// source/licensing models follow docs/CATALOG_AND_STREAMING_PLAN.md §3.
+// Large media files never live in Postgres — only keys and metadata.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum MediaType {
+  MOVIE
+  TV
+}
+
+enum ListType {
+  WATCHLIST
+  FAVORITES
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  PROCESSING
+  EXPIRED
+  UNAVAILABLE
+}
+
+enum SourceStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+enum LicenseType {
+  PUBLIC_DOMAIN
+  CREATIVE_COMMONS
+  LICENSED
+  USER_UPLOAD
+}
+
+enum VideoFormat {
+  HLS
+  MP4
+  WEBM
+}
+
+enum AssetStatus {
+  PENDING
+  VALIDATING
+  TRANSCODING
+  READY
+  FAILED
+}
+
+enum ImportJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+// ── Identity ────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  role         UserRole @default(USER)
+  isDisabled   Boolean  @default(false) @map("is_disabled")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  refreshTokens RefreshToken[]
+  profiles      Profile[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique @map("token_hash")
+  familyId  String   @map("family_id") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([familyId])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Profile {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  avatarKey String   @map("avatar_key")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  preference       UserPreference?
+  listItems        ListItem[]
+  viewingHistory   ViewingHistory[]
+  playbackProgress PlaybackProgress[]
+  reviews          Review[]
+
+  @@index([userId])
+  @@map("profiles")
+}
+
+model UserPreference {
+  profileId         String  @id @map("profile_id") @db.Uuid
+  profile           Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  preferredLanguage String  @default("en") @map("preferred_language")
+  subtitleLanguage  String? @map("subtitle_language")
+  autoplayNext      Boolean @default(true) @map("autoplay_next")
+
+  @@map("user_preferences")
+}
+
+// ── Catalog (governed, distributable set) ──────────────────────────────────
+
+model Title {
+  id               String             @id @default(uuid()) @db.Uuid
+  tmdbId           Int?               @map("tmdb_id")
+  tmdbType         MediaType?         @map("tmdb_type")
+  kind             MediaType
+  title            String
+  originalTitle    String?            @map("original_title")
+  overview         String?
+  posterPath       String?            @map("poster_path")
+  backdropPath     String?            @map("backdrop_path")
+  releaseDate      DateTime?          @map("release_date") @db.Date
+  voteAverage      Float              @default(0) @map("vote_average")
+  voteCount        Int                @default(0) @map("vote_count")
+  popularity       Float              @default(0)
+  runtimeMinutes   Int?               @map("runtime_minutes")
+  status           String?
+  originalLanguage String?            @map("original_language")
+  availability     AvailabilityStatus @default(UNAVAILABLE)
+  isPublished      Boolean            @default(false) @map("is_published")
+  lastSyncedAt     DateTime?          @map("last_synced_at") @db.Timestamptz
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  genres       TitleGenre[]
+  seasons      Season[]
+  videoSources VideoSource[]
+  videoAssets  VideoAsset[]
+  reviews      Review[]
+
+  @@unique([tmdbType, tmdbId])
+  @@index([kind, popularity(sort: Desc)])
+  @@index([availability])
+  @@index([releaseDate(sort: Desc)])
+  @@map("titles")
+}
+
+model Genre {
+  id     Int
+  name   String
+  tmdbType MediaType @map("tmdb_type")
+  titles TitleGenre[]
+
+  @@id([id, tmdbType])
+  @@map("genres")
+}
+
+model TitleGenre {
+  titleId String @map("title_id") @db.Uuid
+  genreId Int
+  tmdbType MediaType @map("tmdb_type")
+
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId, tmdbType], references: [id, tmdbType], onDelete: Cascade)
+
+  @@id([titleId, genreId, tmdbType])
+  @@map("title_genres")
+}
+
+model Season {
+  id           String   @id @default(uuid()) @db.Uuid
+  titleId      String   @map("title_id") @db.Uuid
+  title        Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  seasonNumber Int      @map("season_number")
+  name         String
+  overview     String?
+  posterPath   String?  @map("poster_path")
+  airDate      DateTime? @map("air_date") @db.Date
+  episodeCount Int      @default(0) @map("episode_count")
+  lastSyncedAt DateTime? @map("last_synced_at") @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  episodes Episode[]
+
+  @@unique([titleId, seasonNumber])
+  @@map("seasons")
+}
+
+model Episode {
+  id            String   @id @default(uuid()) @db.Uuid
+  seasonId      String   @map("season_id") @db.Uuid
+  season        Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  episodeNumber Int      @map("episode_number")
+  name          String
+  overview      String?
+  stillPath     String?  @map("still_path")
+  airDate       DateTime? @map("air_date") @db.Date
+  runtimeMinutes Int?    @map("runtime_minutes")
+  voteAverage   Float    @default(0) @map("vote_average")
+  lastSyncedAt  DateTime? @map("last_synced_at") @db.Timestamptz
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  videoSources VideoSource[]
+  videoAssets  VideoAsset[]
+
+  @@unique([seasonId, episodeNumber])
+  @@index([seasonId])
+  @@map("episodes")
+}
+
+// ── Sources, assets & licensing (playability truth) ────────────────────────
+
+model VideoSource {
+  id          String      @id @default(uuid()) @db.Uuid
+  titleId     String?     @map("title_id") @db.Uuid
+  title       Title?      @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  episodeId   String?     @map("episode_id") @db.Uuid
+  episode     Episode?    @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  provider    String
+  externalUrl String?     @map("external_url")
+  storageKey  String?     @map("storage_key")
+  format      VideoFormat
+  resolution  String?
+  licenseType LicenseType @map("license_type")
+  licenseRef  String?     @map("license_ref")
+  territories String[]    @default(["ALL"])
+  status      SourceStatus @default(ACTIVE)
+  expiresAt   DateTime?   @map("expires_at") @db.Timestamptz
+  addedBy     String?     @map("added_by") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  subtitleTracks SubtitleTrack[]
+
+  @@index([titleId])
+  @@index([episodeId])
+  @@index([status])
+  @@map("video_sources")
+}
+
+model VideoAsset {
+  id            String      @id @default(uuid()) @db.Uuid
+  titleId       String?     @map("title_id") @db.Uuid
+  title         Title?      @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  episodeId     String?     @map("episode_id") @db.Uuid
+  episode       Episode?    @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  status        AssetStatus @default(PENDING)
+  failureReason String?     @map("failure_reason")
+  sourceKey     String?     @map("source_key")
+  hlsPrefix     String?     @map("hls_prefix")
+  durationSeconds Int?      @map("duration_seconds")
+  qualities     String[]    @default([])
+  sizeBytes     BigInt?     @map("size_bytes")
+  checksumSha256 String?    @map("checksum_sha256")
+  licenseType   LicenseType @map("license_type")
+  licenseRef    String?     @map("license_ref")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  subtitleTracks SubtitleTrack[]
+
+  @@index([status])
+  @@index([titleId])
+  @@index([episodeId])
+  @@map("video_assets")
+}
+
+model SubtitleTrack {
+  id           String  @id @default(uuid()) @db.Uuid
+  videoSourceId String? @map("video_source_id") @db.Uuid
+  videoSource  VideoSource? @relation(fields: [videoSourceId], references: [id], onDelete: Cascade)
+  videoAssetId String? @map("video_asset_id") @db.Uuid
+  videoAsset   VideoAsset? @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+  language     String
+  label        String
+  format       String  @default("vtt")
+  storageKey   String  @map("storage_key")
+  isDefault    Boolean @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("subtitle_tracks")
+}
+
+// ── Personal data (profile-scoped; activated in later phases) ──────────────
+
+model ListItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  profileId   String    @map("profile_id") @db.Uuid
+  profile     Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  listType    ListType  @map("list_type")
+  mediaType   MediaType @map("media_type")
+  tmdbId      Int       @map("tmdb_id")
+  title       String
+  posterPath  String?   @map("poster_path")
+  releaseDate DateTime? @map("release_date") @db.Date
+  voteAverage Decimal?  @map("vote_average") @db.Decimal(3, 1)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([profileId, listType, mediaType, tmdbId])
+  @@index([profileId, listType, createdAt(sort: Desc)])
+  @@map("list_items")
+}
+
+model ViewingHistory {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  profileId   String    @map("profile_id") @db.Uuid
+  profile     Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  mediaType   MediaType @map("media_type")
+  tmdbId      Int       @map("tmdb_id")
+  title       String
+  posterPath  String?   @map("poster_path")
+  releaseDate DateTime? @map("release_date") @db.Date
+  voteAverage Decimal?  @map("vote_average") @db.Decimal(3, 1)
+  watchedAt   DateTime  @default(now()) @map("watched_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([profileId, mediaType, tmdbId])
+  @@index([profileId, watchedAt(sort: Desc)])
+  @@map("viewing_history")
+}
+
+model PlaybackProgress {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  profileId       String   @map("profile_id") @db.Uuid
+  profile         Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  videoAssetId    String   @map("video_asset_id") @db.Uuid
+  positionSeconds Int      @map("position_seconds")
+  durationSeconds Int      @map("duration_seconds")
+  completed       Boolean  @default(false)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([profileId, videoAssetId])
+  @@index([profileId, updatedAt(sort: Desc)])
+  @@map("playback_progress")
+}
+
+// ── Operations ──────────────────────────────────────────────────────────────
+
+model ImportJob {
+  id            String          @id @default(uuid()) @db.Uuid
+  source        String
+  status        ImportJobStatus @default(PENDING)
+  pagesRequested Int            @default(1) @map("pages_requested")
+  pagesCompleted Int            @default(0) @map("pages_completed")
+  itemsSeen     Int             @default(0) @map("items_seen")
+  itemsCreated  Int             @default(0) @map("items_created")
+  itemsUpdated  Int             @default(0) @map("items_updated")
+  errors        Json            @default("[]")
+  lastPage      Int?            @map("last_page")
+  message       String?
+  startedAt     DateTime        @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt    DateTime?       @map("finished_at") @db.Timestamptz
+
+  @@index([status, startedAt(sort: Desc)])
+  @@map("import_jobs")
+}
+
+model Review {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  profileId        String   @map("profile_id") @db.Uuid
+  profile          Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  titleId          String   @map("title_id") @db.Uuid
+  title            Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  rating           Int
+  body             String
+  containsSpoilers Boolean  @default(false) @map("contains_spoilers")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([profileId, titleId])
+  @@index([titleId, createdAt(sort: Desc)])
+  @@map("reviews")
+}

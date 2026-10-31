@@ -89,23 +89,23 @@
 
 ---
 
-## Phase 4 — PostgreSQL, Authentication & Profiles
+## Phase 4 — Data Foundation & Catalog Sync Engine (expanded per library brief; see CATALOG_AND_STREAMING_PLAN.md)
 
-**Goal:** Real accounts with multiple profiles, securely.
+**Goal:** Real PostgreSQL with the full catalog schema, availability model, and an automated incremental TMDB sync engine. Auth/profiles move to Phase 5 unchanged.
 
 **Scope**
-- embedded-postgres (⚑ ADR #3) + Node scripts (`db:start/stop/reset`); Prisma + migrations (`phase4_auth`: users, refresh_tokens, profiles, user_preferences).
-- Auth service/routes: register, login, refresh rotation + family revocation, logout, me; argon2id; JWT with `sub + profileId + role`; auth rate limiting.
-- Profiles: CRUD (≤5), preset avatar gallery, activate/switch (token re-issue), preferences (language, subtitle language, autoplay next).
-- Client: login/register (validated forms), profile selection screen (cinematic cards), profile menu in navbar, protected-route scaffolding, silent refresh.
-- Seeding: `ADMIN_BOOTSTRAP_EMAIL` (used in Phase 7).
+- embedded-postgres (ADR #3 exercised) + Node scripts (db:start/stop/reset); data dir gitignored; standard DATABASE_URL (defaults to localhost:5433 embedded).
+- Prisma migration phase4_catalog_baseline: identity (users, refresh_tokens, profiles, user_preferences) + catalog (titles, genres, title_genres, seasons, episodes) + sources/licensing (video_sources, video_assets, subtitle_tracks) + operations (import_jobs). No media in Postgres.
+- Availability derivation (AVAILABLE / PROCESSING / EXPIRED / UNAVAILABLE; RESTRICTED decided per-request) — driven only by video_sources/assets, never by metadata imports.
+- Sync engine: bounded-page TMDB list sync (trending/popular/top-rated/now-playing/upcoming movies; popular/top-rated/airing-today/on-the-air TV) with pacing, per-page retry, dedupe on (tmdb_type, tmdb_id), import_jobs audit; seasons/episodes deep-sync per title on demand.
+- APIs: bootstrap-token-gated sync trigger + job list (x-bootstrap-token vs ADMIN_BOOTSTRAP_TOKEN; 503 when unset; replaced by RBAC in Phase 5); public GET /library/stats and GET /titles/:type/:id/availability (honest UNAVAILABLE until sources exist).
+- Script: npm run sync:catalog -- --pages=N.
 
 **Acceptance criteria**
-- [ ] `npm run db:start` → migrations apply; app fully functional with DB running.
-- [ ] Register → me → logout → login in browser; reload keeps session (silent refresh); access-token expiry refreshes transparently.
-- [ ] Replayed revoked refresh token (curl) revokes family → forced re-login; wrong credentials → generic 401; duplicate email → 409; brute-force → 429.
-- [ ] Profile create/rename/avatar/delete works; switching scopes all later personal data; >5 blocked with visible message.
-- [ ] No tokens in localStorage (devtools); protected APIs → 401 envelope when unauthenticated.
+- [ ] db:start boots PG, migrations apply cleanly, db:stop/db:reset work.
+- [ ] A sync run imports real titles; re-run updates (no duplicates); import_jobs reflects pages/counts/errors.
+- [ ] /library/stats truthful (watchable = 0 until sources); availability endpoint = UNAVAILABLE for metadata-only titles.
+- [ ] All prior tests green + new DB/sync tests; builds clean; app runnable.
 
 ---
 

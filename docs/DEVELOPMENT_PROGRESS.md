@@ -6,24 +6,33 @@
 
 | | |
 |---|---|
-| **Phase** | **3 of 8 — Details, seasons/episodes, search & filters** |
-| **State** | ✅ **COMPLETE** — implemented, tested (99/99), built, and live-verified in the browser (2026-10-31) |
-| **App runnable?** | Yes — `npm run dev`. Detail pages, person pages, search with suggestions, and advanced discovery all live against real TMDB data |
-| **Next** | Phase 4 — PostgreSQL, authentication & profiles (**awaiting user approval**; ⚑ ADR #3 embedded-postgres sign-off needed) |
+| **Phase** | **4 of 8 — Data foundation & catalog sync engine** (expanded per the massive-library brief; see `docs/CATALOG_AND_STREAMING_PLAN.md`) |
+| **State** | ✅ **COMPLETE** — PostgreSQL live, catalog schema migrated, sync engine imported 280 unique titles (dedupe verified), 116/116 tests, builds clean (2026-10-31) |
+| **App runnable?** | Yes — `npm run dev` (API+UI as before) plus `npm run db:start` for the local Postgres |
+| **Next** | Phase 5 — Authentication & profiles (**awaiting user approval**) |
 
 ## Phase Tracker
 
 | Phase | Theme | Status | Notes |
 |---|---|---|---|
-| 0 | Documentation & reconciliation | ✅ done | Six docs reconciled to the streaming spec (v2) |
-| 1 | Foundation & premium UI shell | ✅ done | 2026-10-31 |
-| 2 | Homepage, catalog & TMDB | ✅ done | Live data verified 2026-10-31 |
-| 3 | Details, search & filters | ✅ **done** | Browser-verified 2026-10-31; see DoD below |
-| 4 | PostgreSQL, auth & profiles | ⬜ pending | ⚑ ADR #3 embedded-postgres sign-off needed |
-| 5 | Watchlist, favorites, history, progress | ⬜ pending | |
-| 6 | Video player & authorized streaming | ⬜ pending | Requires FFmpeg/FFprobe on host |
-| 7 | Admin dashboard & content management | ⬜ pending | |
+| 0–3 | Docs, foundation, UI shell, TMDB discovery, details/search | ✅ done | 2026-10-31 |
+| 4 | Data foundation & catalog sync | ✅ **done** | 280 titles synced; dedupe verified; availability truthfully UNAVAILABLE |
+| 5 | Auth & profiles | ⬜ pending | next |
+| 6 | Player, HLS streaming, sources & subtitles | ⬜ pending | storage abstraction + FFmpeg; needs real licensed/public-domain sources |
+| 7 | Admin dashboard & ingestion tools | ⬜ pending | builds on Phase 5 RBAC + Phase 4 sync APIs |
 | 8 | Hardening, testing & deployment | ⬜ pending | |
+
+## Phase 4 — Definition of Done (verified 2026-10-31)
+
+- [x] `npm run db:start` boots embedded PostgreSQL 18 (127.0.0.1:5433, trust auth, gitignored `.pgdata`); `db:stop`/`db:status`/`db:reset` work; daemon survives the npm script (binaries driven directly, not via JS wrapper)
+- [x] Migration `phase4_catalog_baseline`: users, refresh_tokens, profiles, user_preferences, titles, genres (composite PK `(id, tmdb_type)` — TMDB shares genre ids across movie/TV), title_genres, seasons, episodes, video_sources, video_assets, subtitle_tracks, list_items, viewing_history, playback_progress, import_jobs, reviews — with unique constraints + indexes; no media in Postgres
+- [x] Sync engine: 9 TMDB sources (trending/popular/top-rated/now-playing/upcoming movies; popular/top-rated/airing-today/on-the-air TV), bounded pages, 250 ms pacing, per-page retry, dedupe on `(tmdb_type, tmdb_id)`, `import_jobs` audit trail, single-run lock per source, deep-sync per title on demand (seasons+episodes)
+- [x] Availability model: derived ONLY from video_sources/assets (metadata imports can never flip it); `RESTRICTED` decided per request; verified in unit tests + live data
+- [x] APIs: public `GET /library/stats` + `GET /titles/:type/:id/availability` (honest UNAVAILABLE); admin `POST /admin/sync`, `POST /admin/titles/deep-sync`, `GET /admin/import-jobs` behind `x-bootstrap-token` (503 when unset — replaced by RBAC in Phase 5)
+- [x] Script: `npm run sync:catalog -- --source=… --pages=N`
+- [x] Tests: **server 67/67** (17 new: availability truth table, sync import/dedupe/job-audit/failed-run/deep-sync/concurrency lock, library API incl. admin token matrix), **client 49/49** untouched — total **116/116**
+- [x] Live sync result: 9/9 sources COMPLETED, **280 unique titles** (128 movies / 152 TV), second run = 0 created / all updated (dedupe), database size **9.3 MB**, watchable **0** (no sources exist yet — honest)
+- [x] Gates: typecheck ×2 clean · lint 0 · production builds clean · app runnable throughout
 
 ## Phase 3 — Definition of Done (verified 2026-10-31)
 
@@ -68,6 +77,8 @@
 
 | Date | Phase | Entry |
 |---|---|---|
+| 2026-10-31 | 4 | **Data foundation & catalog sync complete.** Embedded PostgreSQL 18 via ADR #3 (binaries driven directly so the daemon survives scripts); db:start/stop/status/reset; migration phase4_catalog_baseline (16 tables incl. titles/genres/seasons/episodes, video_sources/assets/subtitles with license+territory fields, import_jobs). Genre composite PK fix ((id, tmdb_type) — TMDB shares ids across movie/TV). Sync engine: 9 sources, bounded pages, pacing, retries, dedupe, import_jobs audit, deep-sync per title; bootstrap-token admin API; public stats/availability. **280 unique titles imported live (dedupe verified: re-run = 0 created); watchable 0 (no sources yet — honest); DB 9.3 MB.** Tests 116/116, lint 0, builds clean. |
+| 2026-10-31 | 3 | **Phase 3 complete.** Detail pages (movies + TV with season/episode browser), person pages, debounced navbar search with suggestions + results page, advanced /discover with URL-driven filters, trailer modal, clickable cards + hero More Info, ScrollToTop. Server: detail/season/person/search/discover endpoints with whitelisted params. Tests 99/99 (50 server + 49 client), lint 0, builds clean, browser-verified live. Fixed TV default-season bug (season 0 shadowing). |
 | 2026-10-31 | 2 | **Phase 2 implemented.** Server: TmdbClient + TmdbCache (single-flight) + normalizers + CatalogService + 13 catalog routes with validation; 18 new tests. Client: TanStack Query adoption, apiClient with envelope mapping, Hero/MediaRow/MediaCard/ErrorState/skeletons, home with hero + 10 rows, 4 catalog pages with URL pagination, navbar/footer wiring, attribution; 19 new tests. Verified: 65/65 tests, typecheck ×2, lint 0, builds ×2, browser smoke of error states. Token requested from user for live verification. |
 | 2026-10-31 | 1 | **Phase 1 complete.** Monorepo, hardened API skeleton, premium UI shell, 28 tests, builds, git initialized. |
 | 2026-10-31 | 0 | Environment audited; six planning docs reconciled to the streaming-platform spec (v2). |
