@@ -1,7 +1,7 @@
 import { AppError } from '../../lib/errors.js';
 import type { Logger } from '../../lib/logger.js';
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_API_ROOT = 'https://api.themoviedb.org';
 const TIMEOUT_MS = 8_000;
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const RETRY_DELAY_MS = 300;
@@ -95,7 +95,10 @@ export class TmdbClient {
   }
 
   private buildUrl(path: string, params: Record<string, string | number | undefined>): string {
-    const url = new URL(path, TMDB_BASE_URL);
+    // Join against the origin: an absolute path would otherwise discard the
+    // /3 prefix from a base URL (new URL('/x', '…/3') === '…/x').
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    const url = new URL(`/3${normalized}`, TMDB_API_ROOT);
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) url.searchParams.set(key, String(value));
     }

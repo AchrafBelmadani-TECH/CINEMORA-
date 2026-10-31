@@ -1,3 +1,6 @@
+// Load server/.env into process.env before anything validates it.
+// In production, real env vars take precedence and .env is usually absent.
+import 'dotenv/config';
 import { createApp } from './app.js';
 import { env, EnvValidationError, type Env } from './lib/env.js';
 import { createLogger } from './lib/logger.js';

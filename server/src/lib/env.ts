@@ -36,7 +36,12 @@ export class EnvValidationError extends Error {
 
 /** Parse and validate a raw environment bag (injectable for tests). */
 export function parseEnv(raw: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(raw);
+  // Empty strings (e.g. placeholder lines copied from .env.example for
+  // later phases) mean "unset", not "invalid".
+  const cleaned = Object.fromEntries(
+    Object.entries(raw).map(([k, v]) => [k, typeof v === 'string' && v.trim() === '' ? undefined : v]),
+  );
+  const result = envSchema.safeParse(cleaned);
   if (!result.success) {
     throw new EnvValidationError(result.error.issues);
   }

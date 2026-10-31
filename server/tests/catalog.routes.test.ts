@@ -83,7 +83,7 @@ describe('catalog routes — happy path (Phase 2)', () => {
 
     // upstream called with bearer auth and the requested window
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toContain('/trending/movie/week');
+    expect(url).toContain('/3/trending/movie/week');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
   });
 
