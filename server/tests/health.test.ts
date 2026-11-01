@@ -6,7 +6,7 @@ import { parseEnv } from '../src/lib/env.js';
 import type { Env } from '../src/lib/env.js';
 
 function testEnv(overrides: Partial<Env> = {}): Env {
-  return { ...parseEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' }), ...overrides };
+  return { ...parseEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', JWT_SECRET: 'x'.repeat(32) }), ...overrides };
 }
 
 function makeApp(testRoutes = false) {

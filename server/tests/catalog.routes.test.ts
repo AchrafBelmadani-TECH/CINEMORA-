@@ -5,7 +5,7 @@ import { createLogger } from '../src/lib/logger.js';
 import { parseEnv, type Env } from '../src/lib/env.js';
 
 function testEnv(overrides: Partial<Env> = {}): Env {
-  return { ...parseEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' }), ...overrides };
+  return { ...parseEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', JWT_SECRET: 'x'.repeat(32) }), ...overrides };
 }
 
 const logger = createLogger(testEnv());

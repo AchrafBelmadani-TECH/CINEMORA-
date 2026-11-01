@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import type { RequestHandler } from 'express';
 import type { Env } from '../lib/env.js';
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { CatalogSyncService, isSyncSourceKey, SYNC_SOURCES } from '../services/library/sync.service.js';
 import { LibraryService } from '../services/library/library.service.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { z } from 'zod';
 import { mediaTypeSchema } from '../validators/catalog.js';
 
@@ -17,41 +17,7 @@ const deepSyncBodySchema = z.object({
   tmdbId: z.coerce.number().int().min(1),
 });
 
-/**
- * Interim admin gate until USER/ADMIN RBAC ships (Phase 5): a long random
- * token from ADMIN_BOOTSTRAP_TOKEN must arrive via `x-bootstrap-token`.
- * When the env var is unset the whole admin surface is disabled (503).
- */
-export function requireBootstrapToken(env: Env): RequestHandler {
-  return (_req, _res, next) => {
-    if (!env.ADMIN_BOOTSTRAP_TOKEN) {
-      next(AppError.forbidden('Admin API is disabled — set ADMIN_BOOTSTRAP_TOKEN to enable it'));
-      return;
-    }
-    next();
-  };
-}
-
-function requireTokenMatch(env: Env): RequestHandler {
-  return (req, _res, next) => {
-    const provided = req.header('x-bootstrap-token');
-    if (!env.ADMIN_BOOTSTRAP_TOKEN) {
-      next(AppError.forbidden('Admin API is disabled — set ADMIN_BOOTSTRAP_TOKEN to enable it'));
-      return;
-    }
-    if (provided !== env.ADMIN_BOOTSTRAP_TOKEN) {
-      next(AppError.unauthorized('Invalid bootstrap token'));
-      return;
-    }
-    next();
-  };
-}
-
-export function libraryRoutes(services: {
-  sync: CatalogSyncService;
-  library: LibraryService;
-  env: Env;
-}): Router {
+export function libraryRoutes(services: { sync: CatalogSyncService; library: LibraryService; env: Env }): Router {
   const router = Router();
   const { sync, library, env } = services;
 
@@ -70,10 +36,11 @@ export function libraryRoutes(services: {
     }
   });
 
-  // Admin (bootstrap-token gated until Phase 5 RBAC)
+  // Admin — proper RBAC (requireAuth → requireRole), replacing the interim
+  // bootstrap token (Phase 5).
   const admin = Router();
-  admin.use(requireBootstrapToken(env));
-  admin.use(requireTokenMatch(env));
+  admin.use(requireAuth(env));
+  admin.use(requireRole('ADMIN'));
 
   admin.post('/sync', async (req, res, next) => {
     try {

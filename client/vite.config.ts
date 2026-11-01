@@ -24,5 +24,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Windows-specific stability: the default forks pool crashes worker
+    // processes intermittently on this machine ("Worker exited unexpectedly",
+    // tinypool) with no test-level error. The threads pool has proven stable.
+    // Test batches are additionally split in the `test` npm script.
+    pool: 'threads',
   },
 });

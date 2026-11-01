@@ -6,17 +6,36 @@
 
 | | |
 |---|---|
-| **Phase** | **4 of 8 — Data foundation & catalog sync engine** (expanded per the massive-library brief; see `docs/CATALOG_AND_STREAMING_PLAN.md`) |
-| **State** | ✅ **COMPLETE** — PostgreSQL live, catalog schema migrated, sync engine imported 280 unique titles (dedupe verified), 116/116 tests, builds clean (2026-10-31) |
-| **App runnable?** | Yes — `npm run dev` (API+UI as before) plus `npm run db:start` for the local Postgres |
-| **Next** | Phase 5 — Authentication & profiles (**awaiting user approval**) |
+| **Phase** | **5 of 8 — Authentication & profiles** |
+| **State** | ✅ **COMPLETE** — 159/159 tests, all gates green, auth flows verified live in the browser (2026-11-01) |
+| **App runnable?** | Yes — run db:start then npm run dev. Register/login/profiles/preferences/RBAC fully functional |
+| **Next** | Phase 6 — streaming engine & max-watchable-content plan (presented, **awaiting approval**) |
+
+## Phase 5 — Definition of Done (verified 2026-11-01)
+
+- [x] **Registration & login**: argon2id hashing (19 MiB, OWASP baseline), validation (email, 10+ char password with letters+digits, displayName 2–50), duplicate email → 409, generic 401 (no user enumeration; timing-parity hash burn), disabled accounts → 403
+- [x] **Tokens**: 15-min HS256 access JWT (sub, role, profileId) held client-side in memory only; 30-day 256-bit refresh token in httpOnly/SameSite=Lax cookie (path /api/v1/auth), stored SHA-256-hashed with rotation + family revocation on reuse (theft detection); logout revokes the family; 401 triggers single-flight silent refresh with request replay
+- [x] **Profiles**: CRUD (max 5/account, last-profile delete blocked, owner-scoped 404s), 12 gradient avatar presets (no uploads), activate/switch re-issues the session; refresh preserves the active profile (refresh_tokens.profile_id migration); preferences API (language, subtitle language, autoplay-next)
+- [x] **RBAC**: requireAuth → requireRole('ADMIN'); bootstrap-token admin gate REMOVED — admin sync APIs require a real ADMIN session; ADMIN_BOOTSTRAP_EMAIL registration grants the first admin
+- [x] **Rate limiting**: auth endpoints 10/min/IP (AUTH_RATE_LIMIT_MAX configurable)
+- [x] **Frontend**: login/register pages, 'Who's watching?' profile screen (gradient avatars, add/rename/delete), navbar auth state (profile chip, switch, sign out), ProtectedRoute/GuestOnlyRoute gates, silent-refresh bootstrap
+- [x] **Tests**: server 89/89 (21 new), client 70/70 (9 new) — total 159/159
+- [x] **Live browser verification**: register → profile chip; create + switch profiles; reload → session + active profile persist; sign out → guest state
+- [x] **Gates**: typechecks ×2 clean, lint 0, production builds clean, DB data preserved (280 titles)
+
+## Known issues (honest)
+
+- Embedded Postgres daemon can die if its parent shell session is force-killed; db:start restarts it and data persists (280 titles survived restarts). Managed Postgres in prod is unaffected.
+- Preferences API is complete but has no settings page yet (planned with player/settings work).
+- Client tests run as two deterministic vitest invocations (test script); the Windows worker instability was root-caused to a test-harness redirect loop and fixed — batching retained for stability.
 
 ## Phase Tracker
 
 | Phase | Theme | Status | Notes |
 |---|---|---|---|
 | 0–3 | Docs, foundation, UI shell, TMDB discovery, details/search | ✅ done | 2026-10-31 |
-| 4 | Data foundation & catalog sync | ✅ **done** | 280 titles synced; dedupe verified; availability truthfully UNAVAILABLE |
+| 4 | Data foundation & catalog sync | ✅ done | 280 titles synced; dedupe verified; availability truthfully UNAVAILABLE |
+| 5 | Auth & profiles | ✅ **done** | argon2id + JWT/refresh rotation + RBAC; verified live |
 | 5 | Auth & profiles | ⬜ pending | next |
 | 6 | Player, HLS streaming, sources & subtitles | ⬜ pending | storage abstraction + FFmpeg; needs real licensed/public-domain sources |
 | 7 | Admin dashboard & ingestion tools | ⬜ pending | builds on Phase 5 RBAC + Phase 4 sync APIs |
@@ -77,6 +96,7 @@
 
 | Date | Phase | Entry |
 |---|---|---|
+| 2026-11-01 | 5 | **Authentication & profiles complete.** argon2id hashing; 15-min access JWT (memory-only client-side) + 30-day rotating refresh cookie (hashed at rest, family revocation on reuse); profile CRUD (max 5, avatar presets, preferences API); requireAuth/requireRole RBAC replacing the bootstrap token; rate-limited auth endpoints. Frontend: login/register, 'Who's watching?' profile screen, navbar auth state, silent-refresh bootstrap, protected routes. **Root-caused the vitest worker crash: an infinite redirect loop in ProtectedRoute.test's route map** (login remapped to the gate); harness fixed, batches documented. Live-verified: register, profile create/switch, session persistence across reload, sign out. Tests 159/159 (server 89, client 70), lint 0, builds clean. |
 | 2026-10-31 | 4 | **Data foundation & catalog sync complete.** Embedded PostgreSQL 18 via ADR #3 (binaries driven directly so the daemon survives scripts); db:start/stop/status/reset; migration phase4_catalog_baseline (16 tables incl. titles/genres/seasons/episodes, video_sources/assets/subtitles with license+territory fields, import_jobs). Genre composite PK fix ((id, tmdb_type) — TMDB shares ids across movie/TV). Sync engine: 9 sources, bounded pages, pacing, retries, dedupe, import_jobs audit, deep-sync per title; bootstrap-token admin API; public stats/availability. **280 unique titles imported live (dedupe verified: re-run = 0 created); watchable 0 (no sources yet — honest); DB 9.3 MB.** Tests 116/116, lint 0, builds clean. |
 | 2026-10-31 | 3 | **Phase 3 complete.** Detail pages (movies + TV with season/episode browser), person pages, debounced navbar search with suggestions + results page, advanced /discover with URL-driven filters, trailer modal, clickable cards + hero More Info, ScrollToTop. Server: detail/season/person/search/discover endpoints with whitelisted params. Tests 99/99 (50 server + 49 client), lint 0, builds clean, browser-verified live. Fixed TV default-season bug (season 0 shadowing). |
 | 2026-10-31 | 2 | **Phase 2 implemented.** Server: TmdbClient + TmdbCache (single-flight) + normalizers + CatalogService + 13 catalog routes with validation; 18 new tests. Client: TanStack Query adoption, apiClient with envelope mapping, Hero/MediaRow/MediaCard/ErrorState/skeletons, home with hero + 10 rows, 4 catalog pages with URL pagination, navbar/footer wiring, attribution; 19 new tests. Verified: 65/65 tests, typecheck ×2, lint 0, builds ×2, browser smoke of error states. Token requested from user for live verification. |

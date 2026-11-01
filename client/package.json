@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run src/components src/services src/stores && vitest run src/pages src/App.test.tsx",
+    "test:ci": "vitest run src/components src/services src/stores && vitest run src/pages src/App.test.tsx",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -19,7 +20,8 @@
     "lucide-react": "^0.460.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.0.0"
+    "react-router-dom": "^7.0.0",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

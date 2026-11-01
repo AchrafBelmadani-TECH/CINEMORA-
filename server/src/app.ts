@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import type { Env } from './lib/env.js';
 import type { Logger } from './lib/logger.js';
 import { createRateLimiter } from './lib/rateLimit.js';
@@ -11,6 +12,8 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { catalogRoutes } from './routes/catalog.routes.js';
 import { libraryRoutes } from './routes/library.routes.js';
+import { authRoutes } from './routes/auth.routes.js';
+import { profileRoutes } from './routes/profile.routes.js';
 import { CatalogController } from './controllers/catalog.controller.js';
 import { CatalogService } from './services/tmdb/catalog.service.js';
 import { TmdbClient } from './services/tmdb/tmdbClient.js';
@@ -43,6 +46,7 @@ export function createApp(options: AppOptions) {
     }),
   );
   app.use(express.json({ limit: '100kb' }));
+  app.use(cookieParser());
   app.use(accessLog());
 
   const generalLimiter = createRateLimiter({ windowMs: 60_000, max: 240 });
@@ -58,6 +62,8 @@ export function createApp(options: AppOptions) {
 
   const api = express.Router();
   api.use(healthRoutes());
+  api.use('/auth', authRoutes(env, logger));
+  api.use('/profiles', profileRoutes(env));
   api.use(catalogRoutes(new CatalogController(catalog)));
   api.use(libraryRoutes({ sync, library: new LibraryService(), env }));
 

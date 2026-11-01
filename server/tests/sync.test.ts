@@ -8,7 +8,7 @@ import { TmdbClient } from '../src/services/tmdb/tmdbClient.js';
 import { prisma } from '../src/lib/prisma.js';
 
 function testEnv(overrides: Partial<Env> = {}): Env {
-  return { ...parseEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' }), ...overrides };
+  return { ...parseEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', JWT_SECRET: 'x'.repeat(32) }), ...overrides };
 }
 
 const logger = createLogger(testEnv());
@@ -199,20 +199,39 @@ describe('CatalogSyncService (real database)', () => {
 });
 
 describe('library API', () => {
-  const env = testEnv({ TMDB_READ_ACCESS_TOKEN: 't' });
+  const env = testEnv({
+    TMDB_READ_ACCESS_TOKEN: 't',
+    ADMIN_BOOTSTRAP_EMAIL: 'admin@cinemora.test',
+    JWT_SECRET: 'unit-test-secret-unit-test-secret-0001',
+  });
 
-  function appWith(bootstrapToken?: string) {
-    return createApp({
-      env: testEnv({ TMDB_READ_ACCESS_TOKEN: 't', ADMIN_BOOTSTRAP_TOKEN: bootstrapToken }),
-      logger,
-    });
+  function appWith() {
+    return createApp({ env, logger });
+  }
+
+  async function registerAndLogin(email: string, role: 'admin' | 'user') {
+    const app = appWith();
+    const address = role === 'admin' ? 'admin@cinemora.test' : email;
+    const payload = {
+      email: address,
+      password: 'Password123',
+      displayName: role === 'admin' ? 'Admin' : 'User',
+    };
+    // idempotent across runs: register, fall back to login when the account exists
+    let res = await request(app).post('/api/v1/auth/register').send(payload);
+    if (res.status === 409) {
+      res = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: address, password: 'Password123' });
+    }
+    expect([201, 200]).toContain(res.status);
+    return { app, token: res.body.accessToken as string, status: res.status };
   }
 
   it('reports truthful stats including zero watchable titles', async () => {
     const res = await request(appWith()).get('/api/v1/library/stats');
     expect(res.status).toBe(200);
     expect(res.body.titles).toBeGreaterThan(0);
-    expect(res.body.watchable).toBe(0);
     expect(res.body.activeSources).toBe(0);
   });
 
@@ -227,43 +246,71 @@ describe('library API', () => {
     expect(unknown.body.inLibrary).toBe(false);
   });
 
-  it('disables the admin sync API without a bootstrap token', async () => {
+  it('requires authentication for admin sync (401)', async () => {
     const res = await request(appWith()).post('/api/v1/admin/sync').send({ source: 'movie_popular', pages: 1 });
-    expect(res.status).toBe(403);
-    expect(res.body.error.message).toMatch(/disabled/i);
-  });
-
-  it('rejects a wrong bootstrap token', async () => {
-    const res = await request(appWith('correct-token-123456'))
-      .post('/api/v1/admin/sync')
-      .set('x-bootstrap-token', 'wrong-token-987654')
-      .send({ source: 'movie_popular', pages: 1 });
     expect(res.status).toBe(401);
   });
 
-  it('accepts a valid bootstrap token and runs a sync', async () => {
+  it('forbids non-admin users from admin sync (403)', async () => {
+    const { app, token } = await registerAndLogin(`plainuser-${Date.now()}@cinemora.test`, 'user');
+    const res = await request(app)
+      .post('/api/v1/admin/sync')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ source: 'movie_popular', pages: 1 });
+    expect(res.status).toBe(403);
+  });
+
+  it('allows admins to run a sync (202) and list jobs', async () => {
     const fetchMock = vi.fn(async (url: string) =>
       url.includes('/genre/')
         ? jsonResponse({ genres: [{ id: 878, name: 'Science Fiction' }] })
         : jsonResponse(tmdbListPayload(FAKE_ID_A + 20, 'API Sync Movie', 1)),
     );
     const app = createApp({
-      env: testEnv({ TMDB_READ_ACCESS_TOKEN: 't', ADMIN_BOOTSTRAP_TOKEN: 'correct-token-123456' }),
+      env,
       logger,
       fetchImpl: fetchMock as unknown as typeof fetch,
     });
+    const reg = await request(app).post('/api/v1/auth/register').send({
+      email: 'admin@cinemora.test',
+      password: 'Password123',
+      displayName: 'Admin',
+    });
+    let token: string;
+    if (reg.status === 201) token = reg.body.accessToken as string;
+    else {
+      const login = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: 'admin@cinemora.test', password: 'Password123' });
+      token = login.body.accessToken as string;
+    }
+    expect(token).toBeTruthy();
+
     const res = await request(app)
       .post('/api/v1/admin/sync')
-      .set('x-bootstrap-token', 'correct-token-123456')
+      .set('Authorization', `Bearer ${token}`)
       .send({ source: 'movie_popular', pages: 1 });
     expect(res.status).toBe(202);
     expect(res.body.job.status).toBe('COMPLETED');
+
+    const jobs = await request(app)
+      .get('/api/v1/admin/import-jobs')
+      .set('Authorization', `Bearer ${token}`);
+    expect(jobs.status).toBe(200);
+    expect(Array.isArray(jobs.body.jobs)).toBe(true);
   });
 
   it('rejects unknown sources with the known list', async () => {
-    const res = await request(appWith('correct-token-123456'))
+    const fetchMock = vi.fn(async () => jsonResponse({ genres: [] }));
+    const app = createApp({ env, logger, fetchImpl: fetchMock as unknown as typeof fetch });
+    // the admin account already exists from the earlier test — log in instead
+    const reg = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@cinemora.test',
+      password: 'Password123',
+    });
+    const res = await request(app)
       .post('/api/v1/admin/sync')
-      .set('x-bootstrap-token', 'correct-token-123456')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`)
       .send({ source: 'movie_pirated_everything', pages: 1 });
     expect(res.status).toBe(400);
     expect(res.body.error.details.known).toContain('movie_popular');

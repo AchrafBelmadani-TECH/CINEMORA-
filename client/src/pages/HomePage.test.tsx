@@ -7,6 +7,19 @@ import { testProviders } from '@/test/testProviders';
 // Top-level (hoisted) mock: applies to the static imports of the whole
 // module graph. Self-contained — vi.mock factories cannot close over
 // regular top-level variables.
+
+vi.mock('@/services/authApi', () => ({
+  authApi: {
+    refresh: vi.fn(() => Promise.reject(new Error('no session in tests'))),
+    login: vi.fn(), register: vi.fn(), logout: vi.fn(), me: vi.fn(),
+    listProfiles: vi.fn(() => Promise.resolve({ profiles: [] })),
+    createProfile: vi.fn(), updateProfile: vi.fn(), deleteProfile: vi.fn(), activateProfile: vi.fn(),
+  },
+  AVATAR_PRESETS: ['aurora'],
+  bindSessionHandlers: vi.fn(() => () => {}),
+  setAccessToken: vi.fn(),
+}));
+
 vi.mock('@/services/catalogApi', () => ({
   fetchList: vi.fn((params: { page?: number }) =>
     Promise.resolve({

@@ -37,3 +37,7 @@ class IntersectionObserverStub {
 window.IntersectionObserver =
   window.IntersectionObserver ??
   (IntersectionObserverStub as unknown as typeof IntersectionObserver);
+
+// jsdom does not implement scrolling; ScrollToTop fires on every route render.
+window.scrollTo = vi.fn();
+Element.prototype.scrollIntoView = vi.fn();

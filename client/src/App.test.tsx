@@ -5,6 +5,19 @@ import App from '@/App';
 import { testProviders } from '@/test/testProviders';
 
 // Hoisted top-level mock for the whole catalog API surface.
+
+vi.mock('@/services/authApi', () => ({
+  authApi: {
+    refresh: vi.fn(() => Promise.reject(new Error('no session in tests'))),
+    login: vi.fn(), register: vi.fn(), logout: vi.fn(), me: vi.fn(),
+    listProfiles: vi.fn(() => Promise.resolve({ profiles: [] })),
+    createProfile: vi.fn(), updateProfile: vi.fn(), deleteProfile: vi.fn(), activateProfile: vi.fn(),
+  },
+  AVATAR_PRESETS: ['aurora'],
+  bindSessionHandlers: vi.fn(() => () => {}),
+  setAccessToken: vi.fn(),
+}));
+
 vi.mock('@/services/catalogApi', () => ({
   fetchList: vi.fn(() =>
     Promise.resolve({
@@ -36,12 +49,14 @@ vi.mock('@/services/catalogApi', () => ({
   }));
 
 describe('App shell', () => {
-  it('renders navbar with the full Phase 2 navigation and footer', () => {
+  it('renders navbar with the full Phase 2 navigation and footer', async () => {
     render(testProviders(<App />));
 
+    // bootstrap resolves asynchronously — wait for the shell
+    expect(await screen.findByRole('link', { name: 'Skip to content' })).toBeInTheDocument();
     expect(screen.getAllByText('CINEM').length).toBeGreaterThan(0);
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
-    for (const link of ['Home', 'Movies', 'Series', 'Genres']) {
+    for (const link of ['Home', 'Movies', 'Series', 'Genres', 'Discover']) {
       expect(screen.getAllByRole('link', { name: link }).length).toBeGreaterThan(0);
     }
     expect(screen.getByText(/© 2026 CINEMORA/i)).toBeInTheDocument();
@@ -54,7 +69,8 @@ describe('App shell', () => {
     const user = userEvent.setup();
     render(testProviders(<App />));
 
-    await user.click(screen.getByRole('link', { name: 'Movies' }));
+    const moviesLinks = await screen.findAllByRole('link', { name: 'Movies' });
+    await user.click(moviesLinks[0]!);
     expect(await screen.findByRole('heading', { name: 'Movies' })).toBeInTheDocument();
   });
 });

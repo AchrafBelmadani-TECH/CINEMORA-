@@ -1,9 +1,12 @@
+import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import { ProtectedRoute, GuestOnlyRoute } from '@/components/auth/ProtectedRoute';
+import { useAuthStore } from '@/stores/authStore';
 import { HomePage } from '@/pages/HomePage';
 import { MoviesPage } from '@/pages/catalog/MoviesPage';
 import { SeriesPage } from '@/pages/catalog/SeriesPage';
@@ -13,17 +16,37 @@ import { TitleDetailPage } from '@/pages/detail/TitleDetailPage';
 import { PersonPage } from '@/pages/detail/PersonPage';
 import { SearchPage } from '@/pages/search/SearchPage';
 import { DiscoverPage } from '@/pages/discover/DiscoverPage';
+import { LoginPage, RegisterPage } from '@/pages/auth/LoginPage';
+import { ProfilesPage, AuthLoadingScreen } from '@/pages/auth/ProfilesPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 /**
  * Application shell. Routes appear as their phase lands (ROADMAP.md) —
- * Phase 3 adds details, persons, search and advanced discovery.
+ * Phase 5 adds authentication and profile management.
  */
 export default function App() {
   const location = useLocation();
+  const status = useAuthStore((s) => s.status);
+  const bootstrap = useAuthStore((s) => s.bootstrap);
+
+  useEffect(() => {
+    if (status === 'loading') void bootstrap();
+  }, [status, bootstrap]);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-screen flex-col bg-base pt-16">
+        <Navbar />
+        <main id="main-content" className="flex-1">
+          <AuthLoadingScreen />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen flex-col bg-base pt-16">
+    <div className="flex min-h-screen flex-col bg-base pt-16 md:pt-16">
       <ScrollToTop />
       <a
         href="#main-content"
@@ -113,6 +136,36 @@ export default function App() {
                 <PageTransition>
                   <DiscoverPage />
                 </PageTransition>
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                <GuestOnlyRoute>
+                  <PageTransition>
+                    <LoginPage />
+                  </PageTransition>
+                </GuestOnlyRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <GuestOnlyRoute>
+                  <PageTransition>
+                    <RegisterPage />
+                  </PageTransition>
+                </GuestOnlyRoute>
+              }
+            />
+            <Route
+              path="/profiles"
+              element={
+                <ProtectedRoute>
+                  <PageTransition>
+                    <ProfilesPage />
+                  </PageTransition>
+                </ProtectedRoute>
               }
             />
             <Route

@@ -20,7 +20,13 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default('postgresql://cinemora@localhost:5433/cinemora'),
-  JWT_SECRET: z.string().min(32).optional(),
+  JWT_SECRET: z.string().min(32),
+
+  // Phase 7 (first admin seed): a user registering with this email becomes ADMIN.
+  ADMIN_BOOTSTRAP_EMAIL: z.string().min(3).optional(),
+
+  // Auth endpoint rate limit (requests/min/IP). Default 10; raise for load tests.
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(10_000).default(10),
 
   // Phase 6+
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
@@ -30,7 +36,7 @@ const envSchema = z.object({
 
   // Interim bootstrap-admin credential for the sync API until USER/ADMIN
   // RBAC ships (Phase 5). Unset → admin routes return 503 (disabled).
-  ADMIN_BOOTSTRAP_TOKEN: z.string().min(16).optional(),
+
 });
 
 export type Env = z.infer<typeof envSchema>;
