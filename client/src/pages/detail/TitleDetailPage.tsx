@@ -35,10 +35,11 @@ export function TitleDetailPage({ mediaType }: { mediaType: 'movie' | 'tv' }) {
   const query = key === 'movie' ? movieQuery : tvQuery;
   const detail = query.data;
 
-  // Playability (authenticated): Watch Now only when a verified source exists.
+  // Playability: public availability endpoint works for all users.
   const authStatus = useAuthStore((st) => st.status);
   const streamQuery = useStreamInfo(mediaType, titleId);
-  const canWatch = authStatus === 'authenticated' && streamQuery.data?.available === true;
+  const canWatch = streamQuery.data?.available === true;
+  const isAuthed = authStatus === 'authenticated';
 
   // Season selection lives in the URL (?season=n) for shareable deep links.
   const activeSeasonParam = searchParams.get('season');
@@ -169,7 +170,7 @@ export function TitleDetailPage({ mediaType }: { mediaType: 'movie' | 'tv' }) {
                 </Button>
               )}
 
-              {canWatch && (
+              {canWatch && isAuthed && (
                 <Link
                   to={`/watch?title=${mediaType}/${detail.tmdbId}`}
                   className={cn(
@@ -181,6 +182,24 @@ export function TitleDetailPage({ mediaType }: { mediaType: 'movie' | 'tv' }) {
                   <PlayCircle className="h-4 w-4" aria-hidden />
                   Watch now
                 </Link>
+              )}
+              {canWatch && !isAuthed && (
+                <Link
+                  to="/login"
+                  className={cn(
+                    'inline-flex h-10 items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-4 text-sm font-semibold text-gold',
+                    'transition-all duration-200 hover:bg-gold/20',
+                    trailer ? 'ml-3' : 'mt-5',
+                  )}
+                >
+                  <PlayCircle className="h-4 w-4" aria-hidden />
+                  Sign in to watch
+                </Link>
+              )}
+              {!canWatch && !query.isPending && (
+                <p className={cn('text-sm text-muted', trailer ? 'mt-5' : 'mt-4')}>
+                  Currently unavailable — no authorized video source.
+                </p>
               )}
             </div>
           </div>

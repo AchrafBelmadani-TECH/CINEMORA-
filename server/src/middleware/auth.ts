@@ -60,3 +60,20 @@ export function requireProfile(): RequestHandler {
     next();
   };
 }
+
+/** Parses the Bearer token if present; never errors. Sets req.auth or leaves it undefined. */
+export function optionalAuth(env: Env): RequestHandler {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const header = req.header('authorization');
+    if (!header?.startsWith('Bearer ')) {
+      next();
+      return;
+    }
+    verifyAccessToken(header.slice(7).trim(), env.JWT_SECRET)
+      .then((claims) => {
+        req.auth = { userId: claims.sub, role: claims.role, profileId: claims.profileId };
+        next();
+      })
+      .catch(() => next());
+  };
+}

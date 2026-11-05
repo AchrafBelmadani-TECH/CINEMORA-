@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { playbackApi } from '@/services/playbackApi';
+import { apiClient } from '@/services/apiClient';
 
 /** Resolves playability for a title (used by detail pages + player links). */
 export function useStreamInfo(mediaType: 'movie' | 'tv', tmdbId: number | undefined, episodeNumber?: number) {
@@ -8,6 +9,16 @@ export function useStreamInfo(mediaType: 'movie' | 'tv', tmdbId: number | undefi
     queryFn: () => playbackApi.streamInfo(mediaType, tmdbId!, episodeNumber),
     enabled: tmdbId !== undefined && Number.isFinite(tmdbId),
     staleTime: 60_000,
+  });
+}
+
+/** Public watchable TMDB id sets — usable without authentication. */
+export function useWatchableIds(enabled = true) {
+  return useQuery<{ movies: number[]; tvShows: number[] }>({
+    queryKey: ['watchable-ids'],
+    queryFn: () => apiClient.get<{ movies: number[]; tvShows: number[] }>('/library/watchable-ids'),
+    enabled,
+    staleTime: 5 * 60_000,
   });
 }
 

@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCatalogGenre, useCatalogList, useGenres } from '@/hooks/useCatalog';
-import { useContinueWatching } from '@/hooks/usePlayback';
+import { useContinueWatching, useWatchableIds } from '@/hooks/usePlayback';
 import { useAuthStore } from '@/stores/authStore';
 import { posterUrl } from '@/lib/tmdbImage';
 import { Link as RouteLink } from 'react-router-dom';
@@ -28,6 +28,7 @@ function RowSection({
   link?: { to: string; label: string };
   query: RowQuery;
   genreNameFor?: (genreId: number) => string | undefined;
+  watchableSet?: Set<number>;
 }) {
   return (
     <section className="mb-8 sm:mb-10">
@@ -70,6 +71,8 @@ function RowSection({
 export function HomePage() {
   const authStatus = useAuthStore((st) => st.status);
   const continueWatching = useContinueWatching(authStatus === 'authenticated');
+  const watchableIds = useWatchableIds(true);
+  const watchableSet = new Set([...(watchableIds.data?.movies ?? []), ...(watchableIds.data?.tvShows ?? [])]);
   const hero = useCatalogList({ mediaType: 'movie', kind: 'trending', window: 'day' });
   const genres = useGenres('movie');
   const genreNameFor = (genreId: number) => genres.data?.find((g) => g.id === genreId)?.name;
@@ -104,15 +107,15 @@ export function HomePage() {
       )}
 
       <div className="mx-auto max-w-7xl pt-8 sm:pt-10">
-        <RowSection title="Trending Now" link={{ to: '/movies', label: 'Browse movies' }} query={trending} genreNameFor={genreNameFor} />
-        <RowSection title="Popular Movies" link={{ to: '/movies', label: 'Browse movies' }} query={popular} genreNameFor={genreNameFor} />
-        <RowSection title="Top Rated" query={topRated} genreNameFor={genreNameFor} />
-        <RowSection title="Latest Releases" query={latest} genreNameFor={genreNameFor} />
-        <RowSection title="Action Movies" query={action} genreNameFor={genreNameFor} />
-        <RowSection title="Science Fiction" query={sciFi} genreNameFor={genreNameFor} />
-        <RowSection title="Drama" query={drama} genreNameFor={genreNameFor} />
-        <RowSection title="Horror" query={horror} genreNameFor={genreNameFor} />
-        <RowSection title="Comedy" query={comedy} genreNameFor={genreNameFor} />
+        <RowSection title="Trending Now" link={{ to: '/movies', label: 'Browse movies' }} query={trending} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Popular Movies" link={{ to: '/movies', label: 'Browse movies' }} query={popular} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Top Rated" query={topRated} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Latest Releases" query={latest} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Action Movies" query={action} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Science Fiction" query={sciFi} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Drama" query={drama} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Horror" query={horror} genreNameFor={genreNameFor} watchableSet={watchableSet} />
+        <RowSection title="Comedy" query={comedy} genreNameFor={genreNameFor} watchableSet={watchableSet} />
         {authStatus === 'authenticated' && continueWatching.data && continueWatching.data.items.length > 0 && (
           <section className="mb-8 sm:mb-10" aria-label="Continue watching">
             <div className="mb-3 flex items-center justify-between px-4 sm:px-6">

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Film, Star } from 'lucide-react';
+import { Film, Play, Star } from 'lucide-react';
 import { posterUrl } from '@/lib/tmdbImage';
 import { titlePath } from '@/lib/formatters';
 import type { CatalogListItem } from '@/types/catalog';
@@ -11,6 +11,8 @@ export interface MediaCardProps {
   genreName?: string;
   /** Full-width layout for grids (rows use the fixed poster width). */
   fluid?: boolean;
+  /** Show a gold "Playable" badge (set from the watchable-ids lookup). */
+  watchable?: boolean;
   className?: string;
 }
 
@@ -22,7 +24,7 @@ function yearOf(releaseDate: string | null): string | null {
  * Poster card: title, year, rating, optional genre — links to the detail page
  * (available since Phase 3).
  */
-export function MediaCard({ item, genreName, fluid = false, className }: MediaCardProps) {
+export function MediaCard({ item, genreName, fluid = false, watchable = false, className }: MediaCardProps) {
   const url = posterUrl(item.posterPath);
   const year = yearOf(item.releaseDate);
   const rating = item.voteAverage > 0 ? item.voteAverage.toFixed(1) : null;
@@ -62,6 +64,12 @@ export function MediaCard({ item, genreName, fluid = false, className }: MediaCa
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-base/80 px-1.5 py-0.5 text-xs font-semibold text-gold backdrop-blur-sm">
             <Star className="h-3 w-3 fill-gold" aria-hidden />
             {rating}
+          </span>
+        )}
+        {watchable && (
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-gold/90 px-1.5 py-0.5 text-[10px] font-bold text-base backdrop-blur-sm">
+            <Play className="h-2.5 w-2.5 fill-base" aria-hidden />
+            PLAY
           </span>
         )}
       </div>

@@ -8,6 +8,7 @@ export interface MediaRowProps {
   items: CatalogListItem[];
   /** Resolves a genre name for the card sub-line. */
   genreNameFor?: (genreId: number) => string | undefined;
+  watchableSet?: Set<number>;
   /** Suppress the built-in heading when the parent already renders one. */
   hideHeading?: boolean;
 }
@@ -17,7 +18,7 @@ export interface MediaRowProps {
  * scrollable when focused, with scroll buttons on desktop that appear only
  * when there is something to scroll toward.
  */
-export function MediaRow({ title, items, genreNameFor, hideHeading = false }: MediaRowProps) {
+export function MediaRow({ title, items, genreNameFor, hideHeading = false, watchableSet }: MediaRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
@@ -79,7 +80,7 @@ export function MediaRow({ title, items, genreNameFor, hideHeading = false }: Me
         >
           {items.map((item) => (
             <div key={`${item.mediaType}-${item.tmdbId}`} className="snap-start">
-              <MediaCard item={item} genreName={genreNameFor?.(item.genreIds[0] ?? -1)} />
+              <MediaCard item={item} genreName={genreNameFor?.(item.genreIds[0] ?? -1)} watchable={watchableSet?.has(item.tmdbId) ?? false} />
             </div>
           ))}
         </div>

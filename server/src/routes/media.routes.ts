@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Env } from '../lib/env.js';
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
-import { requireAuth, requireProfile, requireRole } from '../middleware/auth.js';
+import { optionalAuth, requireAuth, requireProfile, requireRole } from '../middleware/auth.js';
 import { verifyMediaToken } from '../services/media/mediaToken.js';
 import { safeJoin, type MediaStorage } from '../services/media/storage.js';
 import type { TranscodeService } from '../services/media/transcode.service.js';
@@ -65,21 +65,21 @@ export function mediaRoutes(services: {
 
   session.get(
     '/titles/:tmdbType/:tmdbId/stream-info',
-    requireAuth(env),
+    optionalAuth(env),
     asyncRoute(async (req, res) => {
       const { tmdbType, tmdbId } = streamInfoParams.parse(req.params);
       const episodeNumber = typeof req.query.episode === 'string' && /^[0-9]+$/.test(req.query.episode)
         ? Number(req.query.episode)
         : undefined;
       res.json(
-        await playback.titleStreamInfo(tmdbType, tmdbId, req.auth!.userId, req.auth!.profileId, episodeNumber),
+        await playback.titleStreamInfo(tmdbType, tmdbId, req.auth?.userId ?? null, req.auth?.profileId ?? null, episodeNumber),
       );
     }),
   );
 
   session.get(
     '/titles/:tmdbType/:tmdbId/episode-availability',
-    requireAuth(env),
+    optionalAuth(env),
     asyncRoute(async (req, res) => {
       const { tmdbType, tmdbId } = streamInfoParams.parse(req.params);
       res.json(await playback.episodeAvailability(tmdbType, tmdbId));

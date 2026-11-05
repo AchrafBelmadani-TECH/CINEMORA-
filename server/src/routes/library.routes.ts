@@ -26,6 +26,17 @@ export function libraryRoutes(services: { sync: CatalogSyncService; library: Lib
     res.json(await library.stats());
   });
 
+  router.get('/library/watchable-ids', async (_req, res) => {
+    const rows = await prisma.title.findMany({
+      where: { availability: 'AVAILABLE', isPublished: true },
+      select: { tmdbId: true, tmdbType: true, kind: true },
+    });
+    res.json({
+      movies: rows.filter((r) => r.kind === 'MOVIE').map((r) => r.tmdbId),
+      tvShows: rows.filter((r) => r.kind === 'TV').map((r) => r.tmdbId),
+    });
+  });
+
   router.get('/titles/:tmdbType/:tmdbId/availability', async (req, res, next) => {
     try {
       const { tmdbType } = z.object({ tmdbType: mediaTypeSchema }).parse(req.params);
