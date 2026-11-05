@@ -38,9 +38,9 @@ export interface ContinueWatchingItem {
 
 export const playbackApi = {
   /** Resolves what can play for a title (optionally a specific episode). */
-  streamInfo(tmdbType: 'movie' | 'tv', tmdbId: number, episodeId?: string) {
+  streamInfo(tmdbType: 'movie' | 'tv', tmdbId: number, episodeNumber?: number) {
     return apiClient.get<StreamInfo>(`/titles/${tmdbType}/${tmdbId}/stream-info`, {
-      episodeId,
+      episodeNumber,
     });
   },
 

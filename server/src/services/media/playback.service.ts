@@ -150,7 +150,7 @@ export class PlaybackService {
     tmdbId: number,
     userId: string | null,
     profileId: string | null,
-    episodeId?: string,
+    episodeNumber?: number,
   ): Promise<StreamInfo> {
     const title = await prisma.title.findUnique({
       where: { tmdbType_tmdbId: { tmdbType: tmdbType === 'movie' ? 'MOVIE' : 'TV', tmdbId } },
@@ -164,8 +164,8 @@ export class PlaybackService {
       return { available: false, reason: 'NO_AUTHORIZED_SOURCE', titleId: title.id, title: title.title };
     }
 
-    const baseWhere = episodeId
-      ? { episodeId }
+    const baseWhere = episodeNumber != null
+      ? { episode: { episodeNumber, season: { titleId: title.id } } }
       : { OR: [{ titleId: title.id }, { episode: { season: { titleId: title.id } } }] };
 
     // READY asset first; otherwise an in-flight asset explains NOT_YET_READY.
@@ -186,7 +186,9 @@ export class PlaybackService {
       // (e.g. a verified Archive.org stream). Remote sources are played
       // natively by the browser; nothing is proxied or rewritten.
       const candidates = await prisma.videoSource.findMany({
-        where: { OR: [{ titleId: title.id }, { episodeId }] },
+        where: episodeNumber != null
+          ? { episode: { episodeNumber, season: { titleId: title.id } } }
+          : { titleId: title.id },
         orderBy: { createdAt: 'asc' },
       });
       const now = new Date();

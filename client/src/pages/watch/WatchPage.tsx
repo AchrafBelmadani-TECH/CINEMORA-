@@ -8,7 +8,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Button } from '@/components/ui/Button';
 
 /**
- * /watch?title=movie/10378&episode=<episodeId> — cinematic playback page.
+ * /watch?title=movie/10378&episode=<episodeNumber> — cinematic playback page.
  * Saves progress periodically, resumes where the viewer left off, and
  * navigates between episodes when the title has them.
  */
@@ -16,7 +16,7 @@ export function WatchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const titleRef = searchParams.get('title') ?? '';
-  const episodeId = searchParams.get('episode') ?? undefined;
+  const episodeNumber = searchParams.get('episode') ? Number(searchParams.get('episode')) : undefined;
 
   const [stream, setStream] = useState<Awaited<ReturnType<typeof playbackApi.streamInfo>> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export function WatchPage() {
       const info = await playbackApi.streamInfo(
         match[1] as 'movie' | 'tv',
         Number(match[2]),
-        episodeId,
+        episodeNumber,
       );
       setStream(info);
     } catch (err) {
@@ -44,7 +44,7 @@ export function WatchPage() {
     } finally {
       setLoading(false);
     }
-  }, [titleRef, episodeId]);
+  }, [titleRef, episodeNumber]);
 
   useEffect(() => {
     void load();
@@ -77,13 +77,12 @@ export function WatchPage() {
     void playbackApi.saveProgress(assetId, Math.round(positionSeconds), Math.round(durationSeconds)).catch(() => undefined);
   }
 
-  function switchEpisode(episode: { episodeId: string; label: string }) {
-    if (!stream?.videoAssetId) return;
-    // keep the current assetId in the URL path position (unused) — the query
-    // params drive resolution; navigate replaces the episode id
+  function switchEpisode(episode: { label: string }) {
+    const sxE = /S(\d+)E(\d+)/.exec(episode.label);
+    if (!sxE) return;
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.set('episode', episode.episodeId);
+      next.set('episode', sxE[2] ?? '');
       return next;
     });
   }

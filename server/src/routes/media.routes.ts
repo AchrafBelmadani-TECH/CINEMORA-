@@ -68,11 +68,11 @@ export function mediaRoutes(services: {
     requireAuth(env),
     asyncRoute(async (req, res) => {
       const { tmdbType, tmdbId } = streamInfoParams.parse(req.params);
-      const episodeId = typeof req.query.episodeId === 'string' && z.string().uuid().safeParse(req.query.episodeId).success
-        ? (req.query.episodeId as string)
+      const episodeNumber = typeof req.query.episode === 'string' && /^[0-9]+$/.test(req.query.episode)
+        ? Number(req.query.episode)
         : undefined;
       res.json(
-        await playback.titleStreamInfo(tmdbType, tmdbId, req.auth!.userId, req.auth!.profileId, episodeId),
+        await playback.titleStreamInfo(tmdbType, tmdbId, req.auth!.userId, req.auth!.profileId, episodeNumber),
       );
     }),
   );

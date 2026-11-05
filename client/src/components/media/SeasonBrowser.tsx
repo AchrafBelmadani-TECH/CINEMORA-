@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Clock, Star } from 'lucide-react';
+import { Clock, Play, Star } from 'lucide-react';
 import { useSeason } from '@/hooks/useCatalog';
 import { stillUrl } from '@/lib/tmdbImage';
 import { formatDate } from '@/lib/formatters';
@@ -10,14 +10,15 @@ import { cn } from '@/lib/cn';
 
 export interface SeasonBrowserProps {
   tvId: number;
+  tmdbId: number;
   seasons: SeasonSummary[];
   /** Active season, synced from the URL (?season=n). */
   activeSeason: number;
   onSeasonChange: (seasonNumber: number) => void;
 }
 
-/** Season pills + episode list with stills, overviews, air dates and runtimes. */
-export function SeasonBrowser({ tvId, seasons, activeSeason, onSeasonChange }: SeasonBrowserProps) {
+/** Season pills + episode list with stills, overviews, air dates and Play buttons. */
+export function SeasonBrowser({ tvId, tmdbId, seasons, activeSeason, onSeasonChange }: SeasonBrowserProps) {
   const visibleSeasons = seasons.filter((s) => s.episodeCount > 0 || s.seasonNumber === 0);
   if (visibleSeasons.length === 0) return null;
 
@@ -49,17 +50,19 @@ export function SeasonBrowser({ tvId, seasons, activeSeason, onSeasonChange }: S
 
       {current.overview && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted">{current.overview}</p>}
 
-      <EpisodeList tvId={tvId} seasonNumber={current.seasonNumber} onSeasonChange={onSeasonChange} />
+      <EpisodeList tvId={tvId} tmdbId={tmdbId} seasonNumber={current.seasonNumber} onSeasonChange={onSeasonChange} />
     </section>
   );
 }
 
 function EpisodeList({
   tvId,
+  tmdbId,
   seasonNumber,
   onSeasonChange,
 }: {
   tvId: number;
+  tmdbId: number;
   seasonNumber: number;
   onSeasonChange: (n: number) => void;
 }) {
@@ -103,6 +106,7 @@ function EpisodeList({
     <ol className="mt-6 space-y-4">
       {data?.episodes.map((episode) => {
         const still = stillUrl(episode.stillPath);
+        const watchHref = `/watch?title=tv/${tmdbId}&episode=${episode.episodeNumber}`;
         return (
           <li key={episode.episodeNumber} className="flex flex-col gap-4 rounded-xl border border-white/5 bg-card/60 p-4 sm:flex-row">
             <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg bg-surface sm:w-40">
@@ -142,6 +146,13 @@ function EpisodeList({
                 )}
               </p>
               {episode.overview && <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted">{episode.overview}</p>}
+              <Link
+                to={watchHref}
+                className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg bg-gold/15 px-3 text-xs font-semibold text-gold transition-colors hover:bg-gold/25"
+              >
+                <Play className="h-3.5 w-3.5" aria-hidden />
+                Play Episode
+              </Link>
             </div>
           </li>
         );

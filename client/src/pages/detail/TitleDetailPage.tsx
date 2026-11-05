@@ -208,6 +208,7 @@ export function TitleDetailPage({ mediaType }: { mediaType: 'movie' | 'tv' }) {
         {detail.mediaType === 'tv' && seasons.length > 0 && (
           <SeasonBrowser
             tvId={detail.tmdbId}
+            tmdbId={detail.tmdbId}
             seasons={detail.seasons}
             activeSeason={activeSeason ?? 0}
             onSeasonChange={(seasonNumber) =>
