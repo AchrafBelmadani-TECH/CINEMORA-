@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Calendar, Clock, Clapperboard, Layers, ListVideo, Play, Users } from 'lucide-react';
+import { Calendar, Clock, Clapperboard, Layers, ListVideo, Play, PlayCircle, Users } from 'lucide-react';
 import { useMovieDetail, useTvDetail } from '@/hooks/useCatalog';
-import { backdropUrl, posterUrl } from '@/lib/tmdbImage';
+import { useStreamInfo } from '@/hooks/usePlayback';
+import { useAuthStore } from '@/stores/authStore';import { backdropUrl, posterUrl } from '@/lib/tmdbImage';
 import { formatDate, formatYear, titleRuntimeLine } from '@/lib/formatters';
 import { RatingRing } from '@/components/media/RatingRing';
 import { CastRow } from '@/components/media/CastRow';
@@ -33,6 +34,11 @@ export function TitleDetailPage({ mediaType }: { mediaType: 'movie' | 'tv' }) {
   const tvQuery = useTvDetail(key === 'tv' ? titleId : undefined);
   const query = key === 'movie' ? movieQuery : tvQuery;
   const detail = query.data;
+
+  // Playability (authenticated): Watch Now only when a verified source exists.
+  const authStatus = useAuthStore((st) => st.status);
+  const streamQuery = useStreamInfo(mediaType, titleId);
+  const canWatch = authStatus === 'authenticated' && streamQuery.data?.available === true;
 
   // Season selection lives in the URL (?season=n) for shareable deep links.
   const activeSeasonParam = searchParams.get('season');
@@ -67,6 +73,8 @@ export function TitleDetailPage({ mediaType }: { mediaType: 'movie' | 'tv' }) {
   const backdrop = backdropUrl(detail.backdropPath);
   const runtimeLine = titleRuntimeLine(detail);
   const trailer = detail.videos[0];
+
+  // Playability (authenticated): Watch Now only when a verified source exists.
   const year = formatYear(detail.releaseDate);
   const genreNames = detail.genres.map((g) => g.name);
 
@@ -159,6 +167,20 @@ export function TitleDetailPage({ mediaType }: { mediaType: 'movie' | 'tv' }) {
                   <Play className="h-4 w-4" aria-hidden />
                   Watch trailer
                 </Button>
+              )}
+
+              {canWatch && (
+                <Link
+                  to={`/watch?title=${mediaType}/${detail.tmdbId}`}
+                  className={cn(
+                    'inline-flex h-10 items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-4 text-sm font-semibold text-gold',
+                    'transition-all duration-200 hover:bg-gold/20',
+                    trailer ? 'ml-3' : 'mt-5',
+                  )}
+                >
+                  <PlayCircle className="h-4 w-4" aria-hidden />
+                  Watch now
+                </Link>
               )}
             </div>
           </div>

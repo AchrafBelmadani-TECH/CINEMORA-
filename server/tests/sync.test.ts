@@ -228,11 +228,11 @@ describe('library API', () => {
     return { app, token: res.body.accessToken as string, status: res.status };
   }
 
-  it('reports truthful stats including zero watchable titles', async () => {
+  it('reports truthful stats (watchable titles exist after seeding)', async () => {
     const res = await request(appWith()).get('/api/v1/library/stats');
     expect(res.status).toBe(200);
     expect(res.body.titles).toBeGreaterThan(0);
-    expect(res.body.activeSources).toBe(0);
+    expect(res.body.watchable).toBeGreaterThan(0);
   });
 
   it('reports UNAVAILABLE honestly for in-library and unknown titles', async () => {

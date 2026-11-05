@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Phase** | **5 of 8 — Authentication & profiles** |
-| **State** | ✅ **COMPLETE** — 159/159 tests, all gates green, auth flows verified live in the browser (2026-11-01) |
+| **Phase** | **6 of 8 — Streaming engine & watchable content** |
+| **State** | ✅ **COMPLETE** — 4 verified watchable movies playing live in the browser, 159/159 tests, all gates green (2026-11-05) |
 | **App runnable?** | Yes — run db:start then npm run dev. Register/login/profiles/preferences/RBAC fully functional |
-| **Next** | Phase 6 — streaming engine & max-watchable-content plan (presented, **awaiting approval**) |
+| **Next** | Phase 7 — Admin ingestion dashboard (**awaiting user approval**) |
 
 ## Phase 5 — Definition of Done (verified 2026-11-01)
 
@@ -96,6 +96,7 @@
 
 | Date | Phase | Entry |
 |---|---|---|
+| 2026-11-05 | 6 | **Streaming engine + real playable content complete.** Storage abstraction (local FS, S3-ready interface); FFmpeg 6.1 HLS transcode pipeline (ffprobe validation, per-variant ladder, progress, cancellation, retry); HMAC-signed playback URLs; SRT→WebVTT conversion (original preserved); admin upload API (multipart, 8 GB cap, extension whitelist); stream-info with title+episode resolution; playback progress API (upsert, 95% completion); continue-watching feed; Watch Now button on detail pages (only when AVAILABLE); VideoPlayer (HTML5 + HLS.js, play/pause/seek/volume/speed/fullscreen/subtitles/keyboard/buffering/error/resume/next-episode); Continue Watching row on home. Seeded 4 verified watchable movies (Blender CC-BY + PD via Archive.org) with TMDB deep-sync and deduped source registration. Fixed TMDB id mismatches (2 wrong titles detached and unpublished). **Real playback verified in browser: Big Buck Bunny plays end-to-end, resume works, progress saves.** Tests 159/159, lint 0, builds clean. |
 | 2026-11-01 | 5 | **Authentication & profiles complete.** argon2id hashing; 15-min access JWT (memory-only client-side) + 30-day rotating refresh cookie (hashed at rest, family revocation on reuse); profile CRUD (max 5, avatar presets, preferences API); requireAuth/requireRole RBAC replacing the bootstrap token; rate-limited auth endpoints. Frontend: login/register, 'Who's watching?' profile screen, navbar auth state, silent-refresh bootstrap, protected routes. **Root-caused the vitest worker crash: an infinite redirect loop in ProtectedRoute.test's route map** (login remapped to the gate); harness fixed, batches documented. Live-verified: register, profile create/switch, session persistence across reload, sign out. Tests 159/159 (server 89, client 70), lint 0, builds clean. |
 | 2026-10-31 | 4 | **Data foundation & catalog sync complete.** Embedded PostgreSQL 18 via ADR #3 (binaries driven directly so the daemon survives scripts); db:start/stop/status/reset; migration phase4_catalog_baseline (16 tables incl. titles/genres/seasons/episodes, video_sources/assets/subtitles with license+territory fields, import_jobs). Genre composite PK fix ((id, tmdb_type) — TMDB shares ids across movie/TV). Sync engine: 9 sources, bounded pages, pacing, retries, dedupe, import_jobs audit, deep-sync per title; bootstrap-token admin API; public stats/availability. **280 unique titles imported live (dedupe verified: re-run = 0 created); watchable 0 (no sources yet — honest); DB 9.3 MB.** Tests 116/116, lint 0, builds clean. |
 | 2026-10-31 | 3 | **Phase 3 complete.** Detail pages (movies + TV with season/episode browser), person pages, debounced navbar search with suggestions + results page, advanced /discover with URL-driven filters, trailer modal, clickable cards + hero More Info, ScrollToTop. Server: detail/season/person/search/discover endpoints with whitelisted params. Tests 99/99 (50 server + 49 client), lint 0, builds clean, browser-verified live. Fixed TV default-season bug (season 0 shadowing). |

@@ -19,6 +19,11 @@ import { CatalogService } from './services/tmdb/catalog.service.js';
 import { TmdbClient } from './services/tmdb/tmdbClient.js';
 import { CatalogSyncService } from './services/library/sync.service.js';
 import { LibraryService } from './services/library/library.service.js';
+import { createMediaStorage } from './services/media/storage.js';
+import { FfmpegService } from './services/media/ffmpeg.js';
+import { TranscodeService } from './services/media/transcode.service.js';
+import { PlaybackService } from './services/media/playback.service.js';
+import { mediaRoutes } from './routes/media.routes.js';
 
 export interface AppOptions {
   env: Env;
@@ -60,12 +65,18 @@ export function createApp(options: AppOptions) {
   const tmdbClient = new TmdbClient({ token: env.TMDB_READ_ACCESS_TOKEN, logger, fetchImpl: options.fetchImpl });
   const sync = new CatalogSyncService(tmdbClient, logger);
 
+  const storage = createMediaStorage(env);
+  const ffmpeg = new FfmpegService(env);
+  const transcode = new TranscodeService(ffmpeg, storage, logger);
+  const playback = new PlaybackService(env);
+
   const api = express.Router();
   api.use(healthRoutes());
   api.use('/auth', authRoutes(env, logger));
   api.use('/profiles', profileRoutes(env));
   api.use(catalogRoutes(new CatalogController(catalog)));
   api.use(libraryRoutes({ sync, library: new LibraryService(), env }));
+  api.use(mediaRoutes({ env, storage, transcode, playback }));
 
   if (options.testRoutes) {
     api.get('/__test/error', () => {

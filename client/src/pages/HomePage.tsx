@@ -1,6 +1,10 @@
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCatalogGenre, useCatalogList, useGenres } from '@/hooks/useCatalog';
+import { useContinueWatching } from '@/hooks/usePlayback';
+import { useAuthStore } from '@/stores/authStore';
+import { posterUrl } from '@/lib/tmdbImage';
+import { Link as RouteLink } from 'react-router-dom';
 import { MediaRow } from '@/components/media/MediaRow';
 import { Hero } from '@/components/media/Hero';
 import { HeroSkeleton, RowSkeleton } from '@/components/media/skeletons';
@@ -64,6 +68,8 @@ function RowSection({
  * (Phases 5–6) and are intentionally absent until they can be real.
  */
 export function HomePage() {
+  const authStatus = useAuthStore((st) => st.status);
+  const continueWatching = useContinueWatching(authStatus === 'authenticated');
   const hero = useCatalogList({ mediaType: 'movie', kind: 'trending', window: 'day' });
   const genres = useGenres('movie');
   const genreNameFor = (genreId: number) => genres.data?.find((g) => g.id === genreId)?.name;
@@ -107,6 +113,35 @@ export function HomePage() {
         <RowSection title="Drama" query={drama} genreNameFor={genreNameFor} />
         <RowSection title="Horror" query={horror} genreNameFor={genreNameFor} />
         <RowSection title="Comedy" query={comedy} genreNameFor={genreNameFor} />
+        {authStatus === 'authenticated' && continueWatching.data && continueWatching.data.items.length > 0 && (
+          <section className="mb-8 sm:mb-10" aria-label="Continue watching">
+            <div className="mb-3 flex items-center justify-between px-4 sm:px-6">
+              <h2 className="font-display text-lg font-bold tracking-wide text-ink sm:text-xl">Continue Watching</h2>
+            </div>
+            <div className="flex gap-4 overflow-x-auto px-4 pb-2 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {continueWatching.data.items.map((item) => (
+                <RouteLink
+                  key={item.videoAssetId}
+                  to={`/watch?${item.titleHref ? `title=${item.titleHref.slice(1)}` : ""}`}
+                  className="group w-40 shrink-0 sm:w-48"
+                >
+                  <div className="relative aspect-video overflow-hidden rounded-xl border border-white/5 bg-card">
+                    {item.posterPath ? (
+                      <img src={posterUrl(item.posterPath) ?? ''} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="h-full w-full bg-surface" />
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                      <div className="h-full bg-gold" style={{ width: `${item.percent}%` }} />
+                    </div>
+                  </div>
+                  <p className="mt-2 truncate text-xs font-medium text-ink">{item.label}</p>
+                  <p className="text-[11px] text-muted">{item.percent}% watched</p>
+                </RouteLink>
+              ))}
+            </div>
+          </section>
+        )}
         <RowSection
           title="Popular TV Series"
           link={{ to: '/series', label: 'Browse series' }}

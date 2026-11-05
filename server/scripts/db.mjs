@@ -11,10 +11,8 @@ import { connect } from 'node:net';
 import { existsSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 
 const serverDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const require_ = createRequire(join(serverDir, 'package.json'));
 
 function binaryDir() {
   const candidates = [

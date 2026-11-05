@@ -18,6 +18,7 @@ import { SearchPage } from '@/pages/search/SearchPage';
 import { DiscoverPage } from '@/pages/discover/DiscoverPage';
 import { LoginPage, RegisterPage } from '@/pages/auth/LoginPage';
 import { ProfilesPage, AuthLoadingScreen } from '@/pages/auth/ProfilesPage';
+import { WatchPage } from '@/pages/watch/WatchPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 /**
@@ -164,6 +165,16 @@ export default function App() {
                 <ProtectedRoute>
                   <PageTransition>
                     <ProfilesPage />
+                  </PageTransition>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/watch"
+              element={
+                <ProtectedRoute>
+                  <PageTransition>
+                    <WatchPage />
                   </PageTransition>
                 </ProtectedRoute>
               }

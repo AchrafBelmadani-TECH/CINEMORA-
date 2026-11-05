@@ -305,6 +305,7 @@ model SubtitleTrack {
   isDefault    Boolean @default(false) @map("is_default")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  @@unique([videoAssetId, language])
   @@map("subtitle_tracks")
 }
 
